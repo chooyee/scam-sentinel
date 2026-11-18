@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="How Scam Sentinel works: data, features, the Transformer model, training, scoring and the IBM AML converter.">
+<meta name="color-scheme" content="light dark">
+<title>Scam Sentinel Developer Guide</title>
+<style>
+  :root{
+    --bg:#F6F8FA; --panel:#FFFFFF; --panel2:#EEF2F6; --line:#D6DEE6;
+    --text:#14202B; --muted:#5B6B7B; --accent:#1F6FD6; --accent-soft:#E3EEFB;
+    --safe:#1E9E68; --watch:#B7800E; --alert:#D63B3B;
+    --mono:ui-monospace,'SF Mono','Cascadia Code',Consolas,monospace;
+    --body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1217; --panel:#151B23; --panel2:#1B232D; --line:#27313D;
+      --text:#E8EEF4; --muted:#8593A2; --accent:#5AA2FF; --accent-soft:#1A2B40;
+      --safe:#37C98A; --watch:#F0B43C; --alert:#FF5D5D;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1217; --panel:#151B23; --panel2:#1B232D; --line:#27313D;
+    --text:#E8EEF4; --muted:#8593A2; --accent:#5AA2FF; --accent-soft:#1A2B40;
+    --safe:#37C98A; --watch:#F0B43C; --alert:#FF5D5D;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+  a{color:var(--accent)}
+  code,kbd,pre{font-family:var(--mono);font-size:.88em}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;line-height:1.5}
+  pre code{background:none;padding:0}
+  .layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:40px;max-width:1120px;margin:0 auto;padding:40px 24px 80px}
+  nav.toc{position:sticky;top:24px;align-self:start;font-size:14px}
+  nav.toc p{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+  nav.toc a{display:block;padding:4px 0 4px 14px;color:var(--muted);text-decoration:none}
+  nav.toc a:hover{color:var(--text)}
+  header{margin-bottom:28px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+  h1{font-size:36px;line-height:1.1;margin:0 0 12px;letter-spacing:-.02em}
+  .lede{color:var(--muted);font-size:17px;max-width:68ch;margin:0}
+  section{margin-top:52px}
+  h2{font-size:24px;letter-spacing:-.01em;margin:0 0 12px;padding-top:8px}
+  h2 .n{font-family:var(--mono);font-size:13px;color:var(--accent);border:1px solid var(--line);border-radius:6px;padding:2px 7px;margin-right:10px;vertical-align:middle}
+  h3{font-size:17px;margin:28px 0 8px}
+  p,li{max-width:72ch}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:18px 0}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:18px 0}
+  .grid2 .card{margin:0}
+  .card h4{margin:0 0 6px;font-size:15px}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+  .note{border-left:3px solid var(--watch);background:var(--panel);padding:12px 16px;border-radius:0 8px 8px 0;margin:18px 0;font-size:15px}
+  .table-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px}
+  table{border-collapse:collapse;width:100%;font-size:14.5px;background:var(--panel)}
+  th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel2);font-weight:600;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  td code{white-space:nowrap}
+  figure{margin:20px 0}
+  figure svg{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+  figcaption{color:var(--muted);font-size:13.5px;margin-top:8px}
+  svg text{font-family:var(--body);fill:var(--text)}
+  svg .mono{font-family:var(--mono)}
+  svg .muted{fill:var(--muted)}
+  svg .box{fill:var(--panel2);stroke:var(--line);stroke-width:1.2}
+  svg .box-accent{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.2}
+  svg .arrow{stroke:var(--muted);stroke-width:1.5;fill:none;marker-end:url(#ah)}
+  svg .ah{fill:var(--muted)}
+  svg .safe{fill:var(--safe)} svg .alert{fill:var(--alert)} svg .watch{fill:var(--watch)}
+  .bands{display:flex;border-radius:8px;overflow:hidden;font-size:13.5px;margin:14px 0}
+  .bands div{flex:1;padding:10px 12px;color:#fff}
+  .bands b{display:block;font-family:var(--mono);font-size:12px;opacity:.9}
+  .theme-toggle{position:fixed;top:14px;right:16px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:13px var(--body);cursor:pointer}
+  footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13.5px}
+  @media (max-width: 860px){
+    .layout{grid-template-columns:1fr;padding:28px 16px 64px;gap:0}
+    nav.toc{position:static;margin-bottom:8px}
+    nav.toc ol{display:flex;flex-wrap:wrap;gap:4px 14px;border-left:none}
+    nav.toc a{padding:2px 0}
+    h1{font-size:28px}
+  }
+</style>
+</head>
+<body>
+<button class="theme-toggle" type="button" id="themeToggle" aria-label="Toggle light and dark theme">Theme</button>
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#idea">The idea</a></li>
+      <li><a href="#run">Run it</a></li>
+      <li><a href="#arch">Architecture</a></li>
+      <li><a href="#data">Data</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#model">Model</a></li>
+      <li><a href="#training">Training</a></li>
+      <li><a href="#scoring">Scoring</a></li>
+      <li><a href="#ibm">IBM AML converter</a></li>
+      <li><a href="#extend">Extending</a></li>
+      <li><a href="#limits">Limitations</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header>
+      <p class="eyebrow">Scam Sentinel · developer guide</p>
+      <h1>How Scam Sentinel works</h1>
+      <p class="lede">A tour of the code for developers: how transfers become numbers, how a 9,121-parameter Transformer reads them, how a score is explained, and how the public IBM AML dataset is turned into training data.</p>
+    </header>
+
+    <!-- 1 -->
+    <section id="idea">
+      <h2><span class="n">01</span>The idea</h2>
+      <p>In an <b>authorised-push-payment (APP) scam</b> the victim is talked into sending money themselves. The login, device and location are all genuine, so classic fraud signals stay quiet. Two clues are left:</p>
+      <div class="grid2">
+        <div class="card"><h4>1. The payment breaks the account's pattern</h4><p>Bigger than usual, to a new payee, at an odd hour, draining the balance, in a burst of top-ups.</p></div>
+        <div class="card"><h4>2. The receiver looks like a mule</h4><p>Many unrelated senders paying in, money forwarded on within minutes, split into equal slices or cashed out through e-wallets and crypto.</p></div>
+      </div>
+      <p>Scam Sentinel treats an account's 14 most recent transfers like the words of a sentence and asks a small Transformer whether the last one "fits the story". Everything happens in the browser: no server, no data leaves the page.</p>
+    </section>
+
+    <!-- 2 -->
+    <section id="run">
+      <h2><span class="n">02</span>Run it</h2>
+      <pre><code>npm start                 # node tools/serve.js, localhost:8080 only
+npm run check             # syntax + data-shape checks (also runs in CI)
+npm run data:download     # ~450 MB IBM AML raw files into data/ (git-ignored)
+npm run data:convert      # rebuild training-data/ibm-aml-corpus.*</code></pre>
+      <p>You can also double-click <code>scam-sentinel.html</code>. Serving it is only needed for <b>Load from path</b> and the <code>?corpus=</code> URL parameter, because browsers block <code>fetch()</code> from <code>file://</code> pages. There is no <code>npm install</code>: the page uses TensorFlow.js 4.22.0 from cdnjs and the tools use only the Node standard library.</p>
+    </section>
+
+    <!-- 3 -->
+    <section id="arch">
+      <h2><span class="n">03</span>Architecture</h2>
+      <p>The whole app is one file, <code>scam-sentinel.html</code>. Its <code>&lt;script&gt;</code> is split into numbered sections that read top to bottom as a pipeline.</p>
+      <figure>
+        <svg viewBox="0 0 860 250" role="img" aria-labelledby="archT">
+          <title id="archT">Data flow: corpus sources feed timelines, which are encoded, trained on, then used for scoring and the embedding view.</title>
+          <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+          <rect class="box" x="20" y="30" width="170" height="44" rx="8"/><text x="105" y="57" text-anchor="middle" font-size="14">Synthetic generator §3</text>
+          <rect class="box" x="20" y="102" width="170" height="44" rx="8"/><text x="105" y="129" text-anchor="middle" font-size="14">CSV / JSON import §7b</text>
+          <rect class="box" x="20" y="174" width="170" height="44" rx="8"/><text x="105" y="196" text-anchor="middle" font-size="14">Signature library</text><text x="105" y="211" text-anchor="middle" font-size="11" class="muted">tunes the generator</text>
+          <path class="arrow" d="M190,52 L250,110"/><path class="arrow" d="M190,124 L250,124"/><path class="arrow" d="M105,174 L105,150"/>
+          <rect class="box-accent" x="252" y="100" width="130" height="48" rx="8"/><text x="317" y="121" text-anchor="middle" font-size="14">corpus[]</text><text x="317" y="138" text-anchor="middle" font-size="11" class="muted mono">timelines × 14</text>
+          <path class="arrow" d="M382,124 L430,124"/>
+          <rect class="box" x="432" y="100" width="130" height="48" rx="8"/><text x="497" y="121" text-anchor="middle" font-size="14">encode §4</text><text x="497" y="138" text-anchor="middle" font-size="11" class="muted mono">[N,14,19]</text>
+          <path class="arrow" d="M562,124 L610,124"/>
+          <rect class="box-accent" x="612" y="100" width="110" height="48" rx="8"/><text x="667" y="121" text-anchor="middle" font-size="14">train §5 §8</text><text x="667" y="138" text-anchor="middle" font-size="11" class="muted mono">9,121 params</text>
+          <path class="arrow" d="M722,112 L770,62"/><path class="arrow" d="M722,136 L770,186"/>
+          <rect class="box" x="740" y="30" width="105" height="44" rx="8"/><text x="792" y="57" text-anchor="middle" font-size="14">score §9</text>
+          <rect class="box" x="740" y="174" width="105" height="44" rx="8"/><text x="792" y="201" text-anchor="middle" font-size="14">embed §10</text>
+        </svg>
+        <figcaption>§ numbers refer to the section comments in the script block.</figcaption>
+      </figure>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">§</th><th scope="col">Section</th><th scope="col">Key functions</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Config</td><td><code>TRANSFERS_PER_TIMELINE</code>, <code>FEATURES_PER_TRANSFER</code>, normalisation caps</td></tr>
+          <tr><td>2</td><td>Helpers</td><td><code>randomBetween</code>, <code>escapeHtml</code>, <code>formatRinggit</code></td></tr>
+          <tr><td>3</td><td>Data generation</td><td><code>createAccountTimeline</code>, <code>createScamSequence</code>, <code>createMuleReceiverSignature</code>, <code>sampleReceiverSignature</code></td></tr>
+          <tr><td>4</td><td>Feature encoding</td><td><code>encodeTransfer</code>, <code>encodeTimeline</code></td></tr>
+          <tr><td>5</td><td>Model</td><td><code>buildModel</code>, <code>forwardPass</code>, <code>binaryCrossEntropy</code></td></tr>
+          <tr><td>6</td><td>App state</td><td><code>corpus</code>, <code>isModelTrained</code>, <code>isBusy</code></td></tr>
+          <tr><td>7 / 7b</td><td>Corpus UI, import / export</td><td><code>renderCorpusTable</code>, <code>importCorpusText</code>, <code>applySignatureLibrary</code>, <code>exportCorpusJson</code></td></tr>
+          <tr><td>8</td><td>Training</td><td><code>trainModel</code></td></tr>
+          <tr><td>9</td><td>Prediction</td><td><code>readScoredTransfer</code>, <code>scoreTransfer</code>, <code>showScoreResult</code></td></tr>
+          <tr><td>10</td><td>Charts</td><td><code>drawGauge</code>, <code>drawLossCurve</code>, <code>projectTo2D</code>, <code>drawEmbeddingScatter</code></td></tr>
+          <tr><td>11</td><td>Startup</td><td><code>wireUpUI</code>, <code>SCORE_PRESETS</code></td></tr>
+        </tbody>
+      </table></div>
+      <div class="note"><b>TensorFlow.js memory.</b> Tensors are not garbage-collected. Wrap maths in <code>tf.tidy(() =&gt; …)</code> and call <code>.dispose()</code> on anything created outside it. <code>forwardPass</code> uses <code>tf.keep</code> to return results out of its tidy block.</div>
+    </section>
+
+    <!-- 4 -->
+    <section id="data">
+      <h2><span class="n">04</span>Data: transfers and timelines</h2>
+      <p>The unit of training data is a <b>timeline</b>: one account's 14 most recent transfers, oldest first, plus a label for the newest one.</p>
+      <pre><code>{ id, label: 0 | 1, scenario, ownerTypicalAmount, transfers: Transfer[14] }</code></pre>
+      <p>A <code>Transfer</code> carries raw fields about the payment (amount, direction, hour, gap, new payee, drain), about the <b>receiver</b> (account age, fan-in 1 h / 24 h / 7 d, fan-out 1 h / 24 h, pass-through, three onward-flow shares), and two derived fields (<code>amountVsTypical</code>, <code>isRoundAmount</code>). <code>createTransfer()</code> fills in the derived ones.</p>
+
+      <h3>The synthetic generator</h3>
+      <p>Each timeline starts from a random account profile (typical amount RM 30–800, balance RM 2k–60k, an active hour, 2–4 known payees), fills 14 normal transfers, then optionally rewrites the tail.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">Kind</th><th scope="col">Tail</th><th scope="col">Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td>routine</td><td>none</td><td>baseline behaviour</td></tr>
+          <tr><td>big new payee <i>(25% of legit)</i></td><td>one genuine RM 5k–40k payment to a new, clean payee</td><td>hard negative: stops the model learning "new payee + big = scam"</td></tr>
+          <tr><td>investment</td><td>4 escalating round top-ups to the same mule</td><td rowspan="4">scam scenarios; every tail pays a receiver with a mule signature (high fan-in and fan-out, pass-through 0.7–1.0, young account)</td></tr>
+          <tr><td>impersonation</td><td>1 transfer of 60–95% of the balance, off-hours</td></tr>
+          <tr><td>job / task</td><td>small inbound "commissions" alternating with outbound "deposits"</td></tr>
+          <tr><td>purchase</td><td>1–2 modest payments</td></tr>
+        </tbody>
+      </table></div>
+      <p>Load a <b>receiver-signature library</b> (see <a href="#ibm">section 09</a>) and the generator samples receiver-side fields from real-shaped snapshots instead of the fixed ranges.</p>
+
+      <h3>Importing data</h3>
+      <p><code>importCorpusText()</code> accepts the CSV (one row per transfer) or JSON layout in <a href="../training-data/TRAINING-DATA-GUIDE.md">TRAINING-DATA-GUIDE.md</a>. It groups rows by <code>account_id</code>, orders them, keeps the last 14, left-pads short histories, derives hour and gap from timestamps, applies defaults, and rejects accounts with invalid values, listing the reason. A file whose <code>format</code> is <code>scam-sentinel-mule-signatures</code> is routed to <code>applySignatureLibrary()</code> instead.</p>
+    </section>
+
+    <!-- 5 -->
+    <section id="features">
+      <h2><span class="n">05</span>Feature encoding</h2>
+      <p><code>encodeTransfer()</code> turns one transfer into 19 floats, mostly in 0–1, so no single feature dominates the first layer. A timeline becomes a <code>[14, 19]</code> matrix.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">#</th><th scope="col">Feature</th><th scope="col">Encoding</th><th scope="col">Signal</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>amount</td><td><code>log1p(amount) / 12</code></td><td rowspan="5">account pattern</td></tr>
+          <tr><td>1</td><td>gap since previous</td><td><code>log1p(seconds) / 12</code></td></tr>
+          <tr><td>2–3</td><td>hour of day</td><td><code>sin</code>, <code>cos</code> of <code>2π·hour/24</code> (23:00 sits next to 00:00)</td></tr>
+          <tr><td>4–5</td><td>direction, new payee</td><td>0 / 1</td></tr>
+          <tr><td>7</td><td>balance drain</td><td><code>min(1, ratio)</code></td></tr>
+          <tr><td>6</td><td>receiver account age</td><td><code>log1p(days) / 8</code></td><td rowspan="5">mule receiver</td></tr>
+          <tr><td>8–10</td><td>fan-in 1 h / 24 h / 7 d</td><td>count ÷ cap (10 / 20 / 40), clipped</td></tr>
+          <tr><td>11–12</td><td>fan-out 1 h / 24 h</td><td>count ÷ cap (6 / 12), clipped</td></tr>
+          <tr><td>13</td><td>pass-through</td><td>as is</td></tr>
+          <tr><td>16–18</td><td>onward non-bank / structured / young receiver</td><td>as is</td></tr>
+          <tr><td>14</td><td>amount vs typical</td><td><code>clip(log(ratio), -1, 3) / 3</code></td><td rowspan="2">account pattern</td></tr>
+          <tr><td>15</td><td>round amount</td><td>≥ 1,000 and divisible by 500</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note"><b>Point-in-time rule.</b> Every receiver feature must be computed from data available at the transfer's timestamp. Computing fan-in with data that arrived later leaks the future: the model looks brilliant in training and fails in production.</div>
+    </section>
+
+    <!-- 6 -->
+    <section id="model">
+      <h2><span class="n">06</span>The model</h2>
+      <p>A single-block Transformer encoder with attention pooling, written with raw <code>tf.variable</code>s (no Keras layers) so every step is visible in <code>forwardPass()</code>.</p>
+      <figure>
+        <svg viewBox="0 0 860 300" role="img" aria-labelledby="modelT">
+          <title id="modelT">Model: input 14 by 19, dense projection to 32 plus positional encoding, self-attention with residual and layer norm, feed-forward with residual and layer norm, attention pooling to a 32-dimensional embedding, dense and sigmoid to a probability.</title>
+          <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+          <g font-size="13" text-anchor="middle">
+            <rect class="box" x="16" y="110" width="100" height="70" rx="8"/><text x="66" y="140">input</text><text x="66" y="160" class="mono muted" font-size="12">[N,14,19]</text>
+            <rect class="box" x="140" y="110" width="110" height="70" rx="8"/><text x="195" y="134">dense 19→32</text><text x="195" y="152">+ positional</text><text x="195" y="168" class="muted" font-size="11">encoding</text>
+            <rect class="box-accent" x="274" y="96" width="130" height="98" rx="8"/><text x="339" y="126">self-attention</text><text x="339" y="144" class="muted" font-size="11">1 head, Q K V O 32×32</text><text x="339" y="168">+ residual</text><text x="339" y="184">LayerNorm</text>
+            <rect class="box-accent" x="428" y="96" width="120" height="98" rx="8"/><text x="488" y="126">feed-forward</text><text x="488" y="144" class="muted" font-size="11">32→64 ReLU→32</text><text x="488" y="168">+ residual</text><text x="488" y="184">LayerNorm</text>
+            <rect class="box" x="572" y="110" width="120" height="70" rx="8"/><text x="632" y="136">attention pool</text><text x="632" y="156" class="muted" font-size="11">softmax over 14</text><text x="632" y="171" class="mono muted" font-size="11">→ [N,32]</text>
+            <rect class="box" x="716" y="110" width="128" height="70" rx="8"/><text x="780" y="136">dense 32→1</text><text x="780" y="156">sigmoid</text><text x="780" y="171" class="mono muted" font-size="11">P(scam)</text>
+          </g>
+          <g style="marker-end:url(#ah2)">
+            <path class="arrow" style="marker-end:url(#ah2)" d="M116,145 L138,145"/><path class="arrow" style="marker-end:url(#ah2)" d="M250,145 L272,145"/>
+            <path class="arrow" style="marker-end:url(#ah2)" d="M404,145 L426,145"/><path class="arrow" style="marker-end:url(#ah2)" d="M548,145 L570,145"/>
+            <path class="arrow" style="marker-end:url(#ah2)" d="M692,145 L714,145"/>
+          </g>
+          <text x="632" y="226" text-anchor="middle" font-size="12" class="muted">this 32-d vector is the "embedding"</text>
+          <path class="arrow" style="marker-end:url(#ah2)" d="M632,214 L632,184"/>
+          <text x="339" y="70" text-anchor="middle" font-size="12" class="muted">every transfer looks at every other transfer</text>
+          <text x="430" y="270" text-anchor="middle" font-size="12" class="muted">9,121 trainable parameters · Glorot-uniform init · no dropout, no mask</text>
+        </svg>
+      </figure>
+      <ol>
+        <li><b>Project.</b> Lift 19 features to <code>MODEL_DIM = 32</code> and add sinusoidal position encoding, so the model knows which transfer is the newest.</li>
+        <li><b>Self-attention.</b> Each transfer builds a query, key and value; <code>softmax(QKᵀ/√32)</code> decides how much each transfer borrows from the others. This is where "four top-ups to the same kind of receiver in a row" becomes visible.</li>
+        <li><b>Feed-forward.</b> A small per-position MLP, with a residual connection and LayerNorm around each sub-layer.</li>
+        <li><b>Attention pooling.</b> A learned score per position, softmaxed over the 14 positions, gives a weighted average: one vector per timeline.</li>
+        <li><b>Classify.</b> Dense to one logit, sigmoid to a probability.</li>
+      </ol>
+    </section>
+
+    <!-- 7 -->
+    <section id="training">
+      <h2><span class="n">07</span>Training</h2>
+      <div class="table-wrap"><table>
+        <tbody>
+          <tr><th scope="row">Split</th><td>random 75% train / 25% held-out</td></tr>
+          <tr><th scope="row">Loss</th><td>binary cross-entropy (ε = 1e-6)</td></tr>
+          <tr><th scope="row">Optimiser</th><td>Adam, learning rate 0.01 / 0.005 (default) / 0.002</td></tr>
+          <tr><th scope="row">Schedule</th><td>30–140 epochs (default 70), full batch, one step per epoch</td></tr>
+          <tr><th scope="row">UI</th><td>loss curve and metrics redrawn every 2 epochs via <code>tf.nextFrame()</code></td></tr>
+          <tr><th scope="row">Metrics</th><td>held-out accuracy and recall at threshold 0.5</td></tr>
+        </tbody>
+      </table></div>
+      <p><code>trainModel()</code> rebuilds the model from scratch on each run and keeps the held-out tensors for the embedding view.</p>
+    </section>
+
+    <!-- 8 -->
+    <section id="scoring">
+      <h2><span class="n">08</span>Scoring and explanation</h2>
+      <p>The score form describes <b>one</b> transfer. <code>scoreTransfer()</code> appends it to a fixed background of 13 identical routine transfers (RM 300, 14:00, one day apart, known payee), so the score depends only on the form inputs and is fully repeatable.</p>
+      <div class="bands" role="img" aria-label="Risk bands: below 0.33 let through; 0.33 to 0.66 add friction; 0.66 and above hold and verify.">
+        <div style="background:var(--safe)"><b>&lt; 0.33</b>Fits the story: let it through</div>
+        <div style="background:var(--watch)"><b>0.33 – 0.66</b>Out of pattern: warn, confirm payee</div>
+        <div style="background:var(--alert)"><b>≥ 0.66</b>Likely mule: hold, cool off, verify</div>
+      </div>
+      <h3>Occlusion explanation</h3>
+      <p>Each of the 14 positions is swapped in turn for a benign baseline row and the timeline is re-scored. The drop in probability becomes a bar in the explanation strip: tall, warm bars are the transfers that pushed the score up. It costs 14 extra forward passes, which is nothing at this model size.</p>
+      <h3>Embedding view</h3>
+      <p>Held-out timelines are run with <code>returnEmbedding: true</code>; the 32-d pooled vectors are reduced to 2D with PCA (power iteration, one deflation) in <code>projectTo2D()</code> and plotted as legit vs scam.</p>
+    </section>
+
+    <!-- 9 -->
+    <section id="ibm">
+      <h2><span class="n">09</span>The IBM AML converter</h2>
+      <p>No public dataset has labelled APP scam transfers. <code>tools/ibm-aml-to-scam-sentinel.js</code> converts IBM's synthetic <i>Transactions for Anti Money Laundering</i> dataset, which has a full account graph and labelled laundering typologies, into the Scam Sentinel layout.</p>
+      <figure>
+        <svg viewBox="0 0 860 200" role="img" aria-labelledby="ibmT">
+          <title id="ibmT">Converter pipeline: download raw CSV, stream and index 4.5 million transfers, pick anchor transfers, compute point-in-time receiver features, write corpus and signature library.</title>
+          <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+          <g font-size="13" text-anchor="middle">
+            <rect class="box" x="16" y="60" width="140" height="70" rx="8"/><text x="86" y="88">download</text><text x="86" y="108" class="muted" font-size="11">HI-Small, ~450 MB</text>
+            <rect class="box" x="186" y="60" width="140" height="70" rx="8"/><text x="256" y="88">stream + index</text><text x="256" y="108" class="muted" font-size="11">4.49 M rows, 515 k accts</text>
+            <rect class="box" x="356" y="60" width="140" height="70" rx="8"/><text x="426" y="88">pick anchors</text><text x="426" y="108" class="muted" font-size="11">800 scam / 1,200 legit</text>
+            <rect class="box-accent" x="526" y="60" width="150" height="70" rx="8"/><text x="601" y="88">receiver features</text><text x="601" y="108" class="muted" font-size="11">as of each timestamp</text>
+            <rect class="box" x="706" y="22" width="140" height="56" rx="8"/><text x="776" y="46">corpus</text><text x="776" y="64" class="muted mono" font-size="11">.csv .json</text>
+            <rect class="box" x="706" y="112" width="140" height="56" rx="8"/><text x="776" y="136">signatures</text><text x="776" y="154" class="muted mono" font-size="11">3k scam + 3k legit</text>
+          </g>
+          <path class="arrow" style="marker-end:url(#ah3)" d="M156,95 L184,95"/><path class="arrow" style="marker-end:url(#ah3)" d="M326,95 L354,95"/>
+          <path class="arrow" style="marker-end:url(#ah3)" d="M496,95 L524,95"/><path class="arrow" style="marker-end:url(#ah3)" d="M676,85 L704,55"/><path class="arrow" style="marker-end:url(#ah3)" d="M676,105 L704,135"/>
+        </svg>
+      </figure>
+      <ul>
+        <li><b>Owner</b> = sender of the anchor transfer; <b>timeline</b> = the owner's last 14 transactions up to the anchor.</li>
+        <li><b>Label 1</b> = the anchor is flagged <i>Is Laundering</i> (its typology becomes the scenario, e.g. <code>aml:fan-in</code>). <b>Label 0</b> = a clean anchor from an owner who never touches a laundering row; 25% of these are "big new payee" hard negatives.</li>
+        <li>Amounts are converted to MYR with a static FX table. Fan-in, fan-out, pass-through and onward shares are computed for the counterparty in trailing windows. Receiver account age is not in the dataset and is left blank.</li>
+        <li>Output is deterministic for a given <code>--seed</code>: re-running <code>npm run data:convert</code> reproduces the committed files byte for byte.</li>
+      </ul>
+      <p>The <b>signature library</b> is often the more useful output: load it into the page and synthetic victims start paying receivers whose behaviour is drawn from real-shaped laundering and clean snapshots.</p>
+      <div class="note">Laundering is not APP scam: in IBM's data the owner is the launderer, not a victim. Treat the converted corpus as a pipeline test, not an accuracy benchmark. Measured held-out AUC on it is about 0.94, against 1.00 on synthetic data, which says more about synthetic data than about the model.</div>
+    </section>
+
+    <!-- 10 -->
+    <section id="extend">
+      <h2><span class="n">10</span>Extending the code</h2>
+      <h3>Add a feature</h3>
+      <ol>
+        <li>Add the raw field to <code>createTransfer()</code> with a default, and set it in the generator functions in §3.</li>
+        <li>Append its encoding to <code>encodeTransfer()</code> and bump <code>FEATURES_PER_TRANSFER</code>.</li>
+        <li>Add it to <code>IMPORT_COLUMNS</code> / <code>EXPORT_FIELDS</code> (and <code>IMPORT_RATIOS</code> if it is 0–1), the editor columns, the score form and <code>SCORE_PRESETS</code>.</li>
+        <li>Update the template CSV, example JSON, schema, <code>TRAINING-DATA-GUIDE.md</code> and <code>SPEC.md</code>; if the IBM converter can compute it, add it there too.</li>
+      </ol>
+      <h3>Add a scam scenario</h3>
+      <p>Add a branch to <code>createScamSequence()</code> that overwrites the last few transfers using <code>createTransferToMule()</code>, add its label to <code>SCENARIO_LABELS</code>, and include it in the weighted scenario list.</p>
+      <h3>Change the model</h3>
+      <p>Weights live in <code>buildModel()</code>, the computation in <code>forwardPass()</code>. Keep the <code>returnEmbedding</code> option working, since the embedding view depends on it. Ideas from the backlog: an attention mask for padded rows, multiple heads, returning pooling weights for a cheaper explanation.</p>
+      <p>The prioritised backlog of bugs, accessibility fixes and features is in <a href="VALIDATION-REPORT.md">VALIDATION-REPORT.md</a>.</p>
+    </section>
+
+    <!-- 11 -->
+    <section id="limits">
+      <h2><span class="n">11</span>Limitations</h2>
+      <ul>
+        <li>Synthetic data separates far more cleanly than real traffic; the accuracy shown in the page is not indicative.</li>
+        <li>One bank sees only its own senders; real fan-in and pass-through need cross-bank intelligence.</li>
+        <li>The model has no notion of receiver identity: "same mule four times" is only visible through a repeated signature.</li>
+        <li>No attention mask, so padded rows count as real history.</li>
+        <li>Corpus generation and the train split use unseeded <code>Math.random()</code>, so in-page results vary run to run.</li>
+      </ul>
+    </section>
+
+    <footer>
+      Scam Sentinel is an independent research demo, MIT licensed. Not affiliated with PayNet, Bank Negara Malaysia or any bank. See <a href="../README.md">README</a>, <a href="SPEC.md">SPEC</a> and <a href="../CONTRIBUTING.md">CONTRIBUTING</a>.
+    </footer>
+  </main>
+</div>
+<script>
+  (function(){
+    var root = document.documentElement, key = 'scam-sentinel-guide-theme';
+    try { var saved = localStorage.getItem(key); if (saved) root.setAttribute('data-theme', saved); } catch (e) {}
+    document.getElementById('themeToggle').addEventListener('click', function(){
+      var current = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem(key, next); } catch (e) {}
+    });
+  })();
+</script>
+</body>
+</html>

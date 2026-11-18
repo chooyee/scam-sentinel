@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.invalid/scam-sentinel/training-data.schema.json",
+  "title": "Scam Sentinel training corpus",
+  "description": "A set of labelled DuitNow account timelines. Each timeline holds up to 14 transfers, oldest first; the newest transfer is the one the label refers to.",
+  "type": "object",
+  "required": ["format", "version", "timelines"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "format": { "const": "scam-sentinel-corpus" },
+    "version": { "const": 1 },
+    "notes": { "type": "string", "maxLength": 2000 },
+    "timelines": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/timeline" }
+    }
+  },
+  "definitions": {
+    "bit": { "type": "integer", "enum": [0, 1] },
+    "ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+    "count": { "type": "integer", "minimum": 0 },
+    "timeline": {
+      "type": "object",
+      "required": ["id", "label", "ownerTypicalAmount", "transfers"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "description": "Pseudonymised account id. Never a real account number."
+        },
+        "label": { "$ref": "#/definitions/bit", "description": "1 = newest transfer is a confirmed APP scam payment, 0 = confirmed legitimate." },
+        "scenario": { "type": "string", "maxLength": 40, "description": "Category word only, e.g. routine, big new payee, investment, impersonation, job, purchase." },
+        "ownerTypicalAmount": { "type": "number", "exclusiveMinimum": 0, "description": "Owner's usual outbound transfer size in RM (e.g. 90-day median)." },
+        "transfers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 14,
+          "items": { "$ref": "#/definitions/transfer" },
+          "description": "Oldest first. Fewer than 14 is allowed; the importer left-pads."
+        }
+      }
+    },
+    "transfer": {
+      "type": "object",
+      "required": [
+        "amount", "direction", "isNewPayee", "balanceDrainRatio",
+        "receiverFanInLastHour", "receiverFanInLast24h", "receiverFanInLast7d",
+        "receiverFanOut1h", "receiverFanOut24h", "passThroughRatio"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time", "description": "ISO 8601 with offset. If present, hourOfDay and secondsSincePrevious may be omitted." },
+        "amount": { "type": "number", "exclusiveMinimum": 0, "description": "RM" },
+        "direction": { "$ref": "#/definitions/bit", "description": "1 = outbound from the owner, 0 = inbound." },
+        "hourOfDay": { "type": "integer", "minimum": 0, "maximum": 23 },
+        "secondsSincePrevious": { "type": "number", "minimum": 0 },
+        "isNewPayee": { "$ref": "#/definitions/bit" },
+        "receiverAccountAgeDays": { "type": "number", "minimum": 0, "description": "Omit if unknown; importer substitutes 365 and flags the row." },
+        "balanceDrainRatio": { "$ref": "#/definitions/ratio" },
+        "receiverFanInLastHour": { "$ref": "#/definitions/count" },
+        "receiverFanInLast24h": { "$ref": "#/definitions/count" },
+        "receiverFanInLast7d": { "$ref": "#/definitions/count" },
+        "receiverFanOut1h": { "$ref": "#/definitions/count", "description": "Distinct first-time receivers the receiver paid in the 60 min ending at this timestamp (burst dispersal)." },
+        "receiverFanOut24h": { "$ref": "#/definitions/count", "description": "Same, 24 h window (daily layering)." },
+        "passThroughRatio": { "$ref": "#/definitions/ratio" },
+        "onwardNonBankExitShare": { "$ref": "#/definitions/ratio", "description": "Optional, default 0. Share of the receiver's onward outflow (24 h) that left via e-wallet top-up, crypto OTC trader, or cardless ATM withdrawal." },
+        "onwardStructuredShare": { "$ref": "#/definitions/ratio", "description": "Optional, default 0. Share of the receiver's onward transfers (24 h) that are equal-sized slices or sit just under a transfer/reporting limit." },
+        "onwardYoungReceiverShare": { "$ref": "#/definitions/ratio", "description": "Optional, default 0. Share of the receiver's onward receivers (24 h) whose accounts are under 90 days old." },
+        "amountVsTypical": { "type": "number", "minimum": 0, "description": "Derived when omitted: amount / ownerTypicalAmount (1 for inbound)." },
+        "isRoundAmount": { "$ref": "#/definitions/bit", "description": "Derived when omitted: amount >= 1000 and divisible by 500." }
+      },
+      "anyOf": [
+        { "required": ["timestamp"] },
+        { "required": ["hourOfDay", "secondsSincePrevious"] }
+      ]
+    }
+  }
+}

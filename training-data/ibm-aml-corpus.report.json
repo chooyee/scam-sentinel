@@ -1,0 +1,44 @@
+{
+  "variant": "HI-Small",
+  "options": {
+    "variant": "HI-Small",
+    "in": "data/ibm-aml",
+    "out": "training-data/ibm-aml-corpus.csv",
+    "scam": 800,
+    "legit": 1200,
+    "hardShare": 0.25,
+    "minTransfers": 14,
+    "pad": false,
+    "warmupDays": 3,
+    "format": "both",
+    "seed": 42,
+    "maxRows": null,
+    "force": false,
+    "signatures": 3000
+  },
+  "rows": 4487133,
+  "accounts": 515088,
+  "timelines": 2000,
+  "candidatesScam": 2698,
+  "scam": 800,
+  "legit": 1200,
+  "hardLegit": 300,
+  "tooShort": 18538,
+  "byScenario": {
+    "aml:cycle": 78,
+    "aml:gather-scatter": 106,
+    "aml:fan-in": 87,
+    "aml:bipartite": 57,
+    "aml:unknown": 182,
+    "aml:stack": 130,
+    "aml:scatter-gather": 107,
+    "aml:fan-out": 11,
+    "aml:random": 42,
+    "routine": 900,
+    "big new payee": 300
+  },
+  "signatures": {
+    "scam": 3000,
+    "legit": 3000
+  }
+}

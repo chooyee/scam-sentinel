@@ -1,0 +1,25 @@
+{
+  "name": "scam-sentinel",
+  "version": "0.3.0",
+  "description": "Browser-only proof of concept that reads an account's recent transfers as a sequence and scores authorised-push-payment (APP) scam risk with a tiny TensorFlow.js Transformer.",
+  "private": true,
+  "license": "MIT",
+  "keywords": [
+    "fraud-detection",
+    "app-scam",
+    "money-mule",
+    "transformer",
+    "tensorflowjs",
+    "aml"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node tools/serve.js",
+    "check": "node tools/check.js",
+    "data:download": "node tools/ibm-aml-to-scam-sentinel.js download",
+    "data:convert": "node tools/ibm-aml-to-scam-sentinel.js convert --format both --seed 42",
+    "data:all": "node tools/ibm-aml-to-scam-sentinel.js all"
+  }
+}

@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scam Sentinel — DuitNow scam-transfer POC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.22.0/tf.min.js"></script>
+<style>
+  :root{
+    --ink:#0E1217; --panel:#151B23; --panel2:#1B232D; --line:#27313D;
+    --text:#E8EEF4; --muted:#8593A2; --accent:#5AA2FF; --accent-dim:#27435f;
+    --safe:#37C98A; --watch:#F0B43C; --alert:#FF5D5D;
+    --disp:'Space Grotesk',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--body);line-height:1.55;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(circle at 16% -12%, #16202b 0%, var(--ink) 44%);}
+  .wrap{max-width:1120px;margin:0 auto;padding:40px 24px 80px}
+  header{margin-bottom:34px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  h1{font-family:var(--disp);font-weight:600;font-size:38px;line-height:1.06;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:normal;color:var(--muted)}
+  .lede{color:var(--muted);max-width:70ch;font-size:15px;margin:0}
+  .lede b{color:var(--text);font-weight:500}
+  .status{display:flex;gap:22px;flex-wrap:wrap;margin-top:18px;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .status span b{color:var(--text);font-weight:500}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;background:var(--muted);vertical-align:middle}
+  .dot.on{background:var(--safe)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 22px 24px;margin-bottom:20px}
+  .phead{display:flex;align-items:baseline;gap:12px;margin-bottom:4px}
+  .pnum{font-family:var(--mono);font-size:12px;color:var(--accent);border:1px solid var(--accent-dim);border-radius:6px;padding:2px 7px}
+  .ptitle{font-family:var(--disp);font-weight:500;font-size:20px;margin:0;letter-spacing:-.01em}
+  .psub{color:var(--muted);font-size:13.5px;margin:2px 0 18px;max-width:80ch}
+  .controls{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end}
+  .ctl{display:flex;flex-direction:column;gap:6px}
+  .ctl label{font-size:11.5px;color:var(--muted);font-family:var(--mono);letter-spacing:.03em}
+  .ctl .val{color:var(--accent);font-weight:500}
+  input[type=range]{width:150px;accent-color:var(--accent);cursor:pointer}
+  select,input[type=number],input[type=text]{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:13px}
+  select:focus,input:focus{outline:2px solid var(--accent);outline-offset:0}
+  button{font-family:var(--disp);font-weight:500;font-size:14px;cursor:pointer;border-radius:9px;padding:10px 18px;border:1px solid transparent;transition:.15s}
+  .btn-primary{background:var(--accent);color:#06121f}
+  .btn-primary:hover{background:#7ab6ff}
+  .btn-ghost{background:transparent;border-color:var(--line);color:var(--text)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .readout{display:flex;gap:28px;flex-wrap:wrap;margin-top:20px;font-family:var(--mono);font-size:13px}
+  .readout .k{color:var(--muted);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+  .readout .v{font-size:22px;font-weight:500;margin-top:2px}
+  canvas{display:block;max-width:100%}
+  .sparkwrap{margin-top:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:12px}
+  .corpustools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 12px}
+  .pill{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .pill b{color:var(--text)}
+  .pill .sc{color:var(--alert)} .pill .lg{color:var(--safe)}
+  .tablebox{max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  thead th{position:sticky;top:0;background:#1f2935;color:var(--muted);font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.04em;text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);z-index:1}
+  tbody td{padding:7px 10px;border-bottom:1px solid #202833;font-family:var(--mono)}
+  tbody tr:hover{background:#1d2733}
+  tr.scam td:first-child{box-shadow:inset 3px 0 0 var(--alert)}
+  tr.legit td:first-child{box-shadow:inset 3px 0 0 var(--safe)}
+  .lblsel{padding:3px 6px;font-size:12px}
+  .mini{background:transparent;border:none;color:var(--accent);cursor:pointer;font-family:var(--mono);font-size:12px;padding:2px 5px}
+  .mini:hover{text-decoration:underline}
+  .editrow td{background:#10171f;padding:0}
+  .editbox{padding:12px 14px;overflow-x:auto}
+  .edittbl input,.edittbl select{padding:4px 5px;font-size:11px;width:56px}
+  .edittbl th{font-size:10px;padding:5px 6px;white-space:nowrap}
+  .edittbl td{padding:4px 6px}
+  .pred-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 20px;max-width:780px}
+  @media(max-width:780px){.pred-grid{grid-template-columns:1fr 1fr}.wrap{padding:28px 16px 60px}h1{font-size:30px}}
+  .fieldgroup{grid-column:1 / -1;border-top:1px solid var(--line);margin-top:6px;padding-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 20px}
+  @media(max-width:780px){.fieldgroup{grid-template-columns:1fr 1fr}}
+  .fieldgroup .gl{grid-column:1 / -1;font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;margin:-2px 0 -2px}
+  .presets{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 20px}
+  .preset{font-family:var(--mono);font-size:12px;padding:7px 12px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--muted)}
+  .preset:hover{border-color:var(--accent);color:var(--accent)}
+  .result{margin-top:24px;display:none;grid-template-columns:230px 1fr;gap:26px;align-items:center}
+  .result.show{display:grid}
+  @media(max-width:780px){.result.show{grid-template-columns:1fr}}
+  .verdict{font-family:var(--disp);font-size:15px;font-weight:500}
+  .verdict small{display:block;color:var(--muted);font-family:var(--body);font-weight:400;font-size:13px;margin-top:7px;line-height:1.5}
+  .strip-label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+  .strip{display:flex;gap:3px;align-items:flex-end;height:56px}
+  .cell{flex:1;border-radius:3px 3px 2px 2px;min-width:6px;background:#222c38;transition:.3s}
+  .cell.last{outline:1.5px solid var(--accent);outline-offset:1px}
+  .strip-legend{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:7px}
+  .embed-legend{display:flex;gap:18px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:14px}
+  .embed-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
+  .note{border-left:2px solid var(--accent-dim);padding-left:14px;color:var(--muted);font-size:13px;margin-top:18px;max-width:76ch;line-height:1.55}
+  .hint{color:var(--muted);font-size:12.5px;font-family:var(--mono);margin-top:16px;line-height:1.6}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Authorised-push-payment scam detection · proof of concept</p>
+    <h1>Scam Sentinel <em>— does this transfer fit the account's story?</em></h1>
+    <p class="lede">In most Malaysian scams the victim <b>authorises the payment themselves</b> after being deceived, so device, login and location all look normal. The money lands in a <b>mule account</b> and is siphoned onward within seconds. This POC reads a DuitNow account's transfer history as a sequence and flags transfers that break the account's pattern <b>and</b> land on a receiver showing mule behaviour — measured as fan-in over 1h/24h/7d windows, onward fan-out over 1h/24h, and pass-through speed. Everything runs in your browser; no data leaves the page.</p>
+    <div class="status">
+      <span><span id="d-engine" class="dot"></span>engine <b id="engine">loading…</b></span>
+      <span>params <b id="params">—</b></span>
+      <span>corpus <b id="corpus-n">0</b></span>
+      <span>state <b id="model-state">untrained</b></span>
+      <span>receiver signatures <b id="sig-state">synthetic ranges</b> <button type="button" class="mini" id="sig-reset" hidden>reset</button></span>
+    </div>
+  </header>
+
+  <!-- 1 CORPUS -->
+  <section class="panel">
+    <div class="phead"><span class="pnum">01</span><h2 class="ptitle">Generate &amp; edit the corpus</h2></div>
+    <p class="psub">Synthetic DuitNow account timelines, or your own data imported in the <code>training-data/</code> CSV or JSON layout. Each row is one account's recent transfers. Click "edit" to open the per-transfer grid and adjust the receiver signals directly — fan-in counts per window, onward fan-out, and pass-through — then train on what you see.</p>
+    <div class="controls">
+      <div class="ctl"><label>accounts <span class="val" id="lab-n">160</span></label><input type="range" id="r-n" min="80" max="500" step="20" value="160"></div>
+      <div class="ctl"><label>scam share <span class="val" id="lab-f">40%</span></label><input type="range" id="r-f" min="10" max="60" step="5" value="40"></div>
+      <button class="btn-primary" id="gen">Generate corpus</button>
+      <button type="button" class="btn-ghost" id="import">Import CSV / JSON</button>
+      <input type="file" id="import-file" accept=".csv,.json,text/csv,application/json" hidden>
+      <button type="button" class="btn-ghost" id="export" disabled>Export JSON</button>
+    </div>
+    <div class="controls" style="margin-top:12px">
+      <div class="ctl" style="flex:1;min-width:260px"><label>load from path (corpus or receiver-signature file; relative to this page; needs http, e.g. <code>node tools/serve.js</code>)</label><input type="text" id="load-path" value="training-data/ibm-aml-corpus.json"></div>
+      <button type="button" class="btn-ghost" id="load">Load from path</button>
+    </div>
+    <p class="hint" id="import-report" hidden></p>
+    <div class="corpustools" id="ctools" style="display:none">
+      <span class="pill">showing <b id="p-total">0</b></span>
+      <span class="pill"><span class="lg">●</span> legit <b id="p-legit">0</b></span>
+      <span class="pill"><span class="sc">●</span> scam <b id="p-scam">0</b></span>
+      <span style="flex:1"></span>
+      <button class="btn-ghost" id="add-legit">+ legit example</button>
+      <button class="btn-ghost" id="add-scam">+ scam example</button>
+    </div>
+    <div class="tablebox" id="tablebox" style="display:none">
+      <table id="corpus-tbl"><thead><tr>
+        <th>#</th><th>scenario</th><th>transfers</th><th>peak (RM)</th><th>new payee</th><th>max pass-through</th><th>label</th><th></th>
+      </tr></thead><tbody id="corpus-body"></tbody></table>
+    </div>
+  </section>
+
+  <!-- 2 TRAIN -->
+  <section class="panel">
+    <div class="phead"><span class="pnum">02</span><h2 class="ptitle">Train the model</h2></div>
+    <p class="psub">Each transfer is projected, self-attention relates it to the rest of the timeline, and attention-pooling focuses on the suspicious ones. Trained on your edited corpus (75% train / 25% held out).</p>
+    <div class="controls">
+      <div class="ctl"><label>epochs <span class="val" id="lab-e">70</span></label><input type="range" id="r-e" min="30" max="140" step="10" value="70"></div>
+      <div class="ctl"><label>learning rate</label><select id="lr"><option>0.01</option><option selected>0.005</option><option>0.002</option></select></div>
+      <button class="btn-primary" id="train" disabled>Train model</button>
+    </div>
+    <div class="sparkwrap"><canvas id="loss" width="1000" height="170"></canvas></div>
+    <div class="readout">
+      <div><div class="k">epoch</div><div class="v" id="o-epoch">0</div></div>
+      <div><div class="k">loss</div><div class="v" id="o-loss">—</div></div>
+      <div><div class="k">held-out accuracy</div><div class="v" id="o-acc" style="color:var(--accent)">—</div></div>
+      <div><div class="k">recall (scams caught)</div><div class="v" id="o-rec" style="color:var(--accent)">—</div></div>
+    </div>
+  </section>
+
+  <!-- 3 SCORE -->
+  <section class="panel">
+    <div class="phead"><span class="pnum">03</span><h2 class="ptitle">Score a transfer</h2></div>
+    <p class="psub">Place a transfer at the end of a normal account timeline and ask the model whether it fits. The receiver signals below are the adjustable fan-in / fan-out / pass-through inputs — drive them directly.</p>
+    <div class="presets">
+      <button class="preset" data-preset="routine">Routine transfer</button>
+      <button class="preset" data-preset="invest">Investment top-up</button>
+      <button class="preset" data-preset="macau">Impersonation payout</button>
+      <button class="preset" data-preset="genuine">Genuine big purchase</button>
+    </div>
+    <div class="pred-grid">
+      <div class="ctl"><label>amount (RM)</label><input type="number" id="f-amt" value="250" step="10"></div>
+      <div class="ctl"><label>direction</label><select id="f-dir"><option value="1">outbound</option><option value="0">inbound</option></select></div>
+      <div class="ctl"><label>new payee</label><select id="f-new"><option value="0">no</option><option value="1">yes</option></select></div>
+      <div class="ctl"><label>receiver acct age (days)</label><input type="number" id="f-age" value="600" min="0"></div>
+      <div class="ctl"><label>drains <span class="val" id="lab-drain">2%</span> of balance</label><input type="range" id="f-drain" min="0" max="100" value="2"></div>
+      <div class="ctl"><label>hour of day</label><input type="number" id="f-hour" value="14" min="0" max="23"></div>
+
+      <div class="fieldgroup">
+        <div class="gl">receiver mule signals — adjust these</div>
+        <div class="ctl"><label>fan-in · distinct senders / 1h</label><input type="number" id="f-fi1" value="0" min="0"></div>
+        <div class="ctl"><label>fan-in · distinct senders / 24h</label><input type="number" id="f-fi24" value="1" min="0"></div>
+        <div class="ctl"><label>fan-in · distinct senders / 7d</label><input type="number" id="f-fi7" value="3" min="0"></div>
+        <div class="ctl"><label>fan-out · onward receivers / 1h</label><input type="number" id="f-fo1" value="0" min="0"></div>
+        <div class="ctl"><label>fan-out · onward receivers / 24h</label><input type="number" id="f-fo" value="0" min="0"></div>
+        <div class="ctl"><label>pass-through <span class="val" id="lab-pass">5%</span> (out within mins)</label><input type="range" id="f-pass" min="0" max="100" value="5"></div>
+        <div class="ctl"><label>onward exits non-bank <span class="val" id="lab-exit">5%</span> (e-wallet / crypto OTC / ATM)</label><input type="range" id="f-exit" min="0" max="100" value="5"></div>
+        <div class="ctl"><label>onward structured <span class="val" id="lab-struct">5%</span> (equal slices / under limit)</label><input type="range" id="f-struct" min="0" max="100" value="5"></div>
+        <div class="ctl"><label>onward receivers young <span class="val" id="lab-young">5%</span> (under 90 days)</label><input type="range" id="f-young" min="0" max="100" value="5"></div>
+        <div class="ctl" style="justify-content:flex-end"><button class="btn-primary" id="score" disabled>Score transfer</button></div>
+      </div>
+    </div>
+    <div class="result" id="result">
+      <div><svg id="gauge" viewBox="0 0 200 120" width="220"></svg></div>
+      <div>
+        <div class="verdict" id="verdict"></div>
+        <div style="margin-top:18px">
+          <div class="strip-label">What drove the score — how far the risk drops if each transfer is removed</div>
+          <div class="strip" id="strip"></div>
+          <div class="strip-legend"><span>older transfers</span><span>this transfer (scored)</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">Fan-in is a count of <b>distinct unrelated senders</b> into the receiver over a window; the short window (1h) is the strongest live signal because a collection mule receives from many victims at once. Fan-out counts <b>distinct first-time receivers</b> the account pays onward; the 1h window catches burst layering (one credit split to several accounts at once) and the 24h window the daily dispersal cycle. Pass-through is the fraction sent onward within minutes. The three onward-flow shares describe <b>how</b> the receiver disperses: the regional layering playbook cashes out through e-wallets, crypto OTC traders and cardless ATM withdrawals, slices amounts just under transfer limits, and hops to other freshly opened mule accounts. Because the customer authorised the payment, a high score should trigger <b>friction, not a silent block</b> — an in-app warning, payee confirmation, a cooling-off hold, or a call. In production these receiver signals come from cross-bank intelligence (the National Fraud Portal), since one bank only sees the senders it hosts.</p>
+  </section>
+
+  <!-- 4 EMBEDDING -->
+  <section class="panel">
+    <div class="phead"><span class="pnum">04</span><h2 class="ptitle">Embedding space</h2></div>
+    <p class="psub">Each account timeline pooled to a single vector, projected to 2D with PCA. Once trained, scam timelines pull away into their own region — fraud "lighting up as an island."</p>
+    <button class="btn-ghost" id="project" disabled>Project held-out embeddings</button>
+    <div class="sparkwrap" style="margin-top:16px"><canvas id="embed" width="1000" height="440"></canvas></div>
+    <div class="embed-legend">
+      <span><i style="background:var(--safe)"></i>legitimate</span>
+      <span><i style="background:var(--alert)"></i>scam</span>
+    </div>
+  </section>
+
+  <p class="hint">Model: 19 transfer features (incl. fan-in over 1h/24h/7d, fan-out over 1h/24h, pass-through, and the onward-flow shape: non-bank exits, structured slices, young receivers) → d_model 32 → 1 self-attention head → feed-forward → attention pooling → sigmoid. On clean synthetic data the classes separate sharply; real DuitNow data is far noisier and would show lower, more realistic accuracy. Production adds multi-head attention, deeper stacks, true graph features over the mule network, and self-supervised pretraining.</p>
+</div>
+
+<script>
+/* =====================================================================
+   SCAM SENTINEL  —  authorised-push-payment (APP) scam detection POC
+   ---------------------------------------------------------------------
+   The idea in one sentence:
+     Read a bank account's recent DuitNow transfers as a *sequence*
+     (like words in a sentence) and ask a small Transformer model
+     whether the newest transfer "fits the story" of that account.
+
+   Why a sequence model? In a scam the victim authorises the payment
+   themselves, so the device / login / location all look normal. The
+   only tell-tale signs are (a) the payment breaking the account's
+   usual pattern and (b) the *receiver* behaving like a mule account
+   (lots of unrelated senders paying in, money flushed straight out).
+
+   Pipeline (top to bottom in this file):
+     1. CONFIG            – sizes & constants
+     2. HELPERS           – tiny math / formatting utilities
+     3. DATA GENERATION   – build synthetic, labelled account timelines
+     4. FEATURE ENCODING  – turn each transfer into a vector of numbers
+     5. THE MODEL         – the Transformer (build + forward pass + loss)
+     6. APP STATE         – variables shared across the UI
+     7. CORPUS UI         – generate / view / edit the training data
+     8. TRAINING          – fit the model, draw the loss curve
+     9. PREDICTION        – score a transfer + explain the decision
+    10. CHARTS            – risk gauge, loss curve, embedding scatter
+    11. STARTUP           – wire everything up on page load
+
+   A note on TensorFlow.js memory: tensors are NOT garbage-collected,
+   so we wrap maths in `tf.tidy(...)` (auto-frees temporaries) and call
+   `.dispose()` on anything we created by hand.
+   ===================================================================== */
+
+
+/* ============================ 1. CONFIG ============================ */
+
+const TRANSFERS_PER_TIMELINE = 14;  // how many recent transfers we look at per account
+const FEATURES_PER_TRANSFER  = 19;  // size of the numeric vector describing one transfer
+const MODEL_DIM              = 32;  // internal width of the Transformer ("d_model")
+const FEEDFORWARD_DIM        = 64;  // width of the feed-forward layer inside the Transformer
+const LAYERNORM_EPSILON      = 1e-5; // tiny number to avoid divide-by-zero in layer norm
+
+// Normalisation caps: a raw count is divided by its cap and clipped to 0..1
+// before going into the model. They double as readable documentation of
+// "what counts as a lot" for each signal.
+const FANIN_1H_CAP  = 10;   // distinct senders into the receiver within 1 hour
+const FANIN_24H_CAP = 20;   // ... within 24 hours
+const FANIN_7D_CAP  = 40;   // ... within 7 days
+const FANOUT_1H_CAP  = 6;   // distinct onward receivers from the receiver within 1 hour (burst dispersal)
+const FANOUT_24H_CAP = 12;  // ... within 24 hours (daily layering)
+const AMOUNT_LOG_SCALE = 12; // divisor that squashes log(amount) into roughly 0..1
+const GAP_LOG_SCALE    = 12; // ... for log(seconds since previous transfer)
+const AGE_LOG_SCALE    = 8;  // ... for log(receiver account age in days)
+
+
+/* ============================ 2. HELPERS ============================ */
+
+/** A normally-distributed random number (mean 0, std 1) via Box–Muller. */
+function randomGaussian() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+/** A uniform random number in [min, max). */
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+/** A uniform random *integer* in [min, max] (both ends inclusive). */
+function randomIntBetween(min, max) {
+  return Math.floor(randomBetween(min, max + 1));
+}
+
+/** Pick a random element from an array. */
+function randomChoice(array) {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+/** Scammers and coached victims often send round thousands (RM5,000 etc.). */
+function isRoundThousands(amount) {
+  return amount >= 1000 && amount % 500 === 0;
+}
+
+/** Format a number as Malaysian Ringgit with thousands separators. */
+function formatRinggit(amount) {
+  return Math.round(amount).toLocaleString('en-MY');
+}
+
+/** Shorthand for document.getElementById. */
+function byId(id) {
+  return document.getElementById(id);
+}
+
+/** Escape text before dropping it into innerHTML (imported files are untrusted). */
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/** Hour of day for an account, with a little natural variation. */
+function wobbleActiveHour(account) {
+  return (account.activeHour + Math.round(randomGaussian() * 2) + 24) % 24;
+}
+
+
+/* ====================== 3. DATA GENERATION ======================== */
+/*
+   We can't use real customer data, so we synthesise account timelines.
+   Each timeline is a list of `transfer` objects plus a label
+   (0 = legitimate, 1 = scam). The generator deliberately includes a
+   HARD case — a genuine large payment to a brand-new payee — so the
+   model has to learn that "new payee + big amount" is NOT enough to
+   flag a scam; the receiver must also look like a mule.
+*/
+
+// Human-readable scenario names shown in the corpus table.
+const SCENARIO_LABELS = {
+  legit:       'routine',
+  legitbig:    'big new payee',
+  investment:  'investment scam',
+  macau:       'impersonation scam',
+  job:         'job/task scam',
+  ecom:        'purchase scam',
+};
+
+/**
+ * Build one transfer object. Every field is named after the real-world
+ * signal it represents. Derived fields (amountVsTypical, isRoundAmount)
+ * are computed here unless explicitly overridden, so the rest of the
+ * code never has to remember to set them.
+ */
+function createTransfer(fields) {
+  return {
+    amount:                 fields.amount,                 // RM value
+    direction:              fields.direction,              // 1 = outbound, 0 = inbound
+    hourOfDay:              fields.hourOfDay,               // 0..23
+    secondsSincePrevious:   fields.secondsSincePrevious,   // gap before this transfer
+    isNewPayee:             fields.isNewPayee,             // 1 = first time paying this account
+    receiverAccountAgeDays: fields.receiverAccountAgeDays, // how old the receiver account is
+    balanceDrainRatio:      fields.balanceDrainRatio,      // fraction of balance this moves (0..1)
+    receiverFanInLastHour:  fields.receiverFanInLastHour,  // distinct senders into receiver / 1h
+    receiverFanInLast24h:   fields.receiverFanInLast24h,   // ... / 24h
+    receiverFanInLast7d:    fields.receiverFanInLast7d,    // ... / 7d
+    receiverFanOut1h:       fields.receiverFanOut1h,       // distinct onward receivers / 1h (burst dispersal)
+    receiverFanOut24h:      fields.receiverFanOut24h,      // ... / 24h (daily layering)
+    passThroughRatio:       fields.passThroughRatio,       // fraction flushed onward fast (0..1)
+    // Onward-flow shape of the receiver's outflow in the last 24h (all 0..1, optional, default 0).
+    // These describe HOW a mule disperses: to non-bank exits, in structured slices, to other fresh mules.
+    onwardNonBankExitShare:   fields.onwardNonBankExitShare   ?? 0, // share leaving via e-wallet / crypto OTC / ATM
+    onwardStructuredShare:    fields.onwardStructuredShare    ?? 0, // share of onward transfers equal-sized or just under a limit
+    onwardYoungReceiverShare: fields.onwardYoungReceiverShare ?? 0, // share of onward receivers under 90 days old
+    ownerTypicalAmount:     fields.ownerTypicalAmount,     // this account's usual transfer size
+    // Derived (override-able so inbound events can force "neutral" values):
+    amountVsTypical:        fields.amountVsTypical ?? (fields.amount / fields.ownerTypicalAmount),
+    isRoundAmount:          fields.isRoundAmount ?? (isRoundThousands(fields.amount) ? 1 : 0),
+  };
+}
+
+/** A synthetic account "profile": its normal habits and known payees. */
+function createAccountProfile() {
+  const knownPayees = [];
+  const payeeCount = 2 + Math.floor(randomBetween(0, 3)); // 2..4 regular payees
+  for (let i = 0; i < payeeCount; i++) {
+    knownPayees.push({ ageInDays: randomBetween(150, 1500) }); // established accounts
+  }
+  return {
+    typicalTransferAmount: randomBetween(30, 800),
+    balance:               randomBetween(2000, 60000),
+    activeHour:            6 + Math.floor(randomBetween(0, 14)), // mostly daytime
+    knownPayees,
+  };
+}
+
+/*
+   Optional receiver-signature library. When a "scam-sentinel-mule-signatures"
+   file is loaded (e.g. extracted from the IBM AML dataset by
+   tools/ibm-aml-to-scam-sentinel.js), the generator draws the receiver-side
+   signals (fan-in, fan-out, pass-through, onward shape) from real-shaped
+   samples instead of the hand-written ranges below. Account age is not in
+   that library, so it stays synthetic either way.
+*/
+let signatureLibrary = null; // { scam: [...], legit: [...] } or null
+const SIGNATURE_FIELDS = ['receiverFanInLastHour', 'receiverFanInLast24h', 'receiverFanInLast7d', 'receiverFanOut1h', 'receiverFanOut24h',
+  'passThroughRatio', 'onwardNonBankExitShare', 'onwardStructuredShare'];
+
+/** A random receiver signature of the given kind from the library, or null when none is loaded. */
+function sampleReceiverSignature(kind) {
+  const pool = signatureLibrary && signatureLibrary[kind];
+  if (!pool || pool.length === 0) return null;
+  const sample = randomChoice(pool);
+  const out = {};
+  for (const key of SIGNATURE_FIELDS) out[key] = sample[key];
+  return out;
+}
+
+/** Overlay a library signature (if loaded) on top of synthetic transfer fields. */
+function withLibrarySignature(fields, kind) {
+  return { ...fields, ...(sampleReceiverSignature(kind) || {}) };
+}
+
+/** A normal transfer: either an incoming salary or an outbound payment to a known payee. */
+function createNormalTransfer(account) {
+  const isIncomingSalary = Math.random() < 0.18;
+
+  if (isIncomingSalary) {
+    return createTransfer(withLibrarySignature({
+      amount:                 randomBetween(account.typicalTransferAmount * 3, account.typicalTransferAmount * 10),
+      direction:              0, // inbound
+      hourOfDay:              wobbleActiveHour(account),
+      secondsSincePrevious:   randomBetween(86400, 5 * 86400), // 1–5 days apart
+      isNewPayee:             0,
+      receiverAccountAgeDays: randomBetween(400, 2000),
+      balanceDrainRatio:      0,
+      receiverFanInLastHour:  0,
+      receiverFanInLast24h:   randomIntBetween(0, 2),
+      receiverFanInLast7d:    randomIntBetween(1, 5),
+      receiverFanOut1h:       0,
+      receiverFanOut24h:      randomIntBetween(0, 1),
+      passThroughRatio:       randomBetween(0, 0.1),
+      ownerTypicalAmount:     account.typicalTransferAmount,
+      amountVsTypical:        1, // salary isn't measured against the owner's typical *outbound* size
+      isRoundAmount:          0,
+    }, 'legit'));
+  }
+
+  // Outbound payment to one of the account's established payees.
+  const payee  = randomChoice(account.knownPayees);
+  const amount = Math.max(5, account.typicalTransferAmount * Math.exp(randomGaussian() * 0.4));
+  // Occasionally a legitimate receiver "sweeps" funds onward, so pass-through isn't always ~0.
+  const passThrough = Math.random() < 0.15 ? randomBetween(0.2, 0.5) : randomBetween(0, 0.2);
+
+  return createTransfer(withLibrarySignature({
+    amount,
+    direction:              1, // outbound
+    hourOfDay:              wobbleActiveHour(account),
+    secondsSincePrevious:   randomBetween(3600, 3 * 86400),
+    isNewPayee:             0,
+    receiverAccountAgeDays: payee.ageInDays,
+    balanceDrainRatio:      Math.min(0.9, amount / account.balance),
+    receiverFanInLastHour:  randomIntBetween(0, 1),
+    receiverFanInLast24h:   randomIntBetween(0, 3),
+    receiverFanInLast7d:    randomIntBetween(1, 6),
+    receiverFanOut1h:       randomIntBetween(0, 1),
+    receiverFanOut24h:      randomIntBetween(0, 2),
+    passThroughRatio:       passThrough,
+    // Ordinary receivers occasionally top up an e-wallet or pay a new account; keep it low.
+    onwardNonBankExitShare:   randomBetween(0, 0.2),
+    onwardStructuredShare:    randomBetween(0, 0.15),
+    onwardYoungReceiverShare: randomBetween(0, 0.15),
+    ownerTypicalAmount:     account.typicalTransferAmount,
+  }, 'legit'));
+}
+
+/**
+ * The crucial HARD negative: a genuine large one-off to a brand-new payee
+ * (buying a car, paying a contractor). Big amount + new payee, BUT the
+ * receiver is a real account — low fan-in, low pass-through — so it must
+ * stay labelled legitimate. This is what stops the model from over-flagging.
+ */
+function createGenuineLargePayment(account) {
+  const amount = randomBetween(5000, 40000);
+  return createTransfer(withLibrarySignature({
+    amount,
+    direction:              1,
+    hourOfDay:              wobbleActiveHour(account),
+    secondsSincePrevious:   randomBetween(3600, 2 * 86400),
+    isNewPayee:             1,
+    receiverAccountAgeDays: randomBetween(120, 1200),
+    balanceDrainRatio:      Math.min(0.95, amount / account.balance),
+    receiverFanInLastHour:  randomIntBetween(0, 1),
+    receiverFanInLast24h:   randomIntBetween(1, 4),
+    receiverFanInLast7d:    randomIntBetween(3, 10),
+    receiverFanOut1h:       randomIntBetween(0, 1),
+    receiverFanOut24h:      randomIntBetween(0, 3),
+    passThroughRatio:       randomBetween(0, 0.3),
+    onwardNonBankExitShare:   randomBetween(0, 0.3),
+    onwardStructuredShare:    randomBetween(0, 0.2),
+    onwardYoungReceiverShare: randomBetween(0, 0.2),
+    ownerTypicalAmount:     account.typicalTransferAmount,
+  }, 'legit'));
+}
+
+/** The receiver-side "signature" of a mule account: burst fan-in + fast pass-through + young account. */
+function createMuleReceiverSignature() {
+  const real = sampleReceiverSignature('scam');
+  if (real) return { ...real, receiverAccountAgeDays: randomBetween(1, 60), onwardYoungReceiverShare: randomBetween(0.5, 1.0) };
+  return {
+    receiverFanInLastHour:  randomIntBetween(3, 10),
+    receiverFanInLast24h:   randomIntBetween(6, 20),
+    receiverFanInLast7d:    randomIntBetween(10, 40),
+    receiverFanOut1h:       randomIntBetween(2, 6),   // splits each credit to several accounts within the hour
+    receiverFanOut24h:      randomIntBetween(3, 12),
+    passThroughRatio:       randomBetween(0.7, 1.0),
+    receiverAccountAgeDays: randomBetween(1, 60),
+    // South-east-Asian layering playbook: cash out via e-wallet / crypto OTC / ATM,
+    // slice amounts just under limits, and hop to other freshly opened mules.
+    onwardNonBankExitShare:   randomBetween(0.4, 1.0),
+    onwardStructuredShare:    randomBetween(0.5, 1.0),
+    onwardYoungReceiverShare: randomBetween(0.5, 1.0),
+  };
+}
+
+/** An outbound transfer from the victim into a mule account. */
+function createTransferToMule(account, mule, amount, hourOfDay, secondsSincePrevious, isNewPayee) {
+  return createTransfer({
+    amount,
+    direction:              1,
+    hourOfDay,
+    secondsSincePrevious,
+    isNewPayee,
+    receiverAccountAgeDays: mule.receiverAccountAgeDays,
+    balanceDrainRatio:      Math.min(0.97, amount / account.balance),
+    receiverFanInLastHour:  mule.receiverFanInLastHour,
+    receiverFanInLast24h:   mule.receiverFanInLast24h,
+    receiverFanInLast7d:    mule.receiverFanInLast7d,
+    receiverFanOut1h:       mule.receiverFanOut1h,
+    receiverFanOut24h:      mule.receiverFanOut24h,
+    passThroughRatio:       mule.passThroughRatio,
+    onwardNonBankExitShare:   mule.onwardNonBankExitShare,
+    onwardStructuredShare:    mule.onwardStructuredShare,
+    onwardYoungReceiverShare: mule.onwardYoungReceiverShare,
+    ownerTypicalAmount:     account.typicalTransferAmount,
+  });
+}
+
+/**
+ * Build the scam "tail" — the run of transfers a victim makes once they've
+ * been deceived. Returns { scenarioKey, transfers } where transfers is the
+ * ordered list to append to the end of an otherwise-normal timeline.
+ */
+function createScamSequence(account) {
+  // 'macau' and 'ecom' appear twice so single/short-burst scams are more common.
+  const scenario = randomChoice(['investment', 'macau', 'macau', 'job', 'ecom', 'ecom']);
+  const transfers = [];
+
+  if (scenario === 'investment') {
+    // Escalating round-number "top-ups" to the same mule over a few days.
+    let amount = randomBetween(1000, 3000);
+    const mule = createMuleReceiverSignature();
+    for (let i = 0; i < 4; i++) {
+      amount *= randomBetween(1.3, 2.0); // each top-up bigger than the last
+      const roundedAmount = Math.round(amount / 500) * 500;
+      transfers.push(createTransferToMule(account, mule, roundedAmount, (account.activeHour + i) % 24, randomBetween(3600, 86400), i === 0 ? 1 : 0));
+    }
+  } else if (scenario === 'macau') {
+    // Impersonation ("Macau") scam: one big account-draining transfer, off-hours.
+    const mule = createMuleReceiverSignature();
+    const amount = Math.min(account.balance * randomBetween(0.6, 0.95), 49000);
+    const roundedAmount = Math.round(amount / 500) * 500;
+    transfers.push(createTransferToMule(account, mule, roundedAmount, (account.activeHour + 12) % 24, randomBetween(120, 1800), 1));
+  } else if (scenario === 'job') {
+    // Job/task scam: small "commission" credits in, larger "task deposits" out.
+    const mule = createMuleReceiverSignature();
+    for (let i = 0; i < 4; i++) {
+      if (i % 2 === 0) {
+        // small incoming commission (looks harmless)
+        transfers.push(createTransfer({
+          amount: randomBetween(80, 300), direction: 0, hourOfDay: (account.activeHour + i) % 24,
+          secondsSincePrevious: randomBetween(1800, 7200), isNewPayee: 0,
+          receiverAccountAgeDays: randomBetween(300, 900), balanceDrainRatio: 0,
+          receiverFanInLastHour: 0, receiverFanInLast24h: randomIntBetween(0, 2),
+          receiverFanInLast7d: randomIntBetween(1, 4), receiverFanOut1h: 0, receiverFanOut24h: randomIntBetween(0, 1),
+          passThroughRatio: randomBetween(0, 0.1), ownerTypicalAmount: account.typicalTransferAmount,
+          amountVsTypical: 1, isRoundAmount: 0,
+        }));
+      } else {
+        // larger outbound "deposit" to the mule
+        transfers.push(createTransferToMule(account, mule, randomBetween(800, 4000), (account.activeHour + i) % 24, randomBetween(600, 3600), i === 1 ? 1 : 0));
+      }
+    }
+  } else { // 'ecom' — quick purchase scam: one or two payments to a mule
+    const mule = createMuleReceiverSignature();
+    for (let i = 0; i < 2; i++) {
+      transfers.push(createTransferToMule(account, mule, randomBetween(300, 2500), (account.activeHour + i) % 24, randomBetween(300, 3600), i === 0 ? 1 : 0));
+    }
+  }
+
+  return { scenarioKey: scenario, transfers };
+}
+
+/**
+ * Assemble one labelled account timeline.
+ * @param {'legit'|'legitbig'|'scam'} kind
+ */
+function createAccountTimeline(kind) {
+  const account = createAccountProfile();
+
+  // Start with a believable run of normal transfers.
+  const transfers = [];
+  for (let i = 0; i < TRANSFERS_PER_TIMELINE; i++) {
+    transfers.push(createNormalTransfer(account));
+  }
+
+  let label = 0;
+  let scenario = SCENARIO_LABELS.legit;
+
+  if (kind === 'legitbig') {
+    transfers[TRANSFERS_PER_TIMELINE - 1] = createGenuineLargePayment(account);
+    scenario = SCENARIO_LABELS.legitbig;
+  } else if (kind === 'scam') {
+    const scam = createScamSequence(account);
+    // Overwrite the most-recent transfers with the scam tail, keeping order.
+    for (let i = 0; i < scam.transfers.length && i < TRANSFERS_PER_TIMELINE; i++) {
+      transfers[TRANSFERS_PER_TIMELINE - 1 - i] = scam.transfers[scam.transfers.length - 1 - i];
+    }
+    label = 1;
+    scenario = SCENARIO_LABELS[scam.scenarioKey];
+  }
+
+  return { transfers, label, scenario, ownerTypicalAmount: account.typicalTransferAmount };
+}
+
+
+/* ====================== 4. FEATURE ENCODING ====================== */
+/*
+   The model only understands numbers, so each transfer becomes a fixed
+   vector of FEATURES_PER_TRANSFER values, each roughly in 0..1. Counts
+   are capped/scaled; the hour is split into sine & cosine so 23:00 and
+   00:00 sit next to each other; large amounts use log so RM50 and
+   RM50,000 don't dominate the scale.
+*/
+
+/** Encode a single transfer object into a numeric feature vector. */
+function encodeTransfer(transfer) {
+  const v = new Array(FEATURES_PER_TRANSFER).fill(0);
+  v[0]  = Math.log1p(transfer.amount)               / AMOUNT_LOG_SCALE;
+  v[1]  = Math.log1p(transfer.secondsSincePrevious) / GAP_LOG_SCALE;
+  v[2]  = Math.sin(2 * Math.PI * transfer.hourOfDay / 24); // cyclical time-of-day
+  v[3]  = Math.cos(2 * Math.PI * transfer.hourOfDay / 24);
+  v[4]  = transfer.direction;
+  v[5]  = transfer.isNewPayee;
+  v[6]  = Math.log1p(transfer.receiverAccountAgeDays) / AGE_LOG_SCALE;
+  v[7]  = Math.min(1, transfer.balanceDrainRatio);
+  v[8]  = Math.min(1, transfer.receiverFanInLastHour / FANIN_1H_CAP);
+  v[9]  = Math.min(1, transfer.receiverFanInLast24h  / FANIN_24H_CAP);
+  v[10] = Math.min(1, transfer.receiverFanInLast7d   / FANIN_7D_CAP);
+  v[11] = Math.min(1, transfer.receiverFanOut1h      / FANOUT_1H_CAP);
+  v[12] = Math.min(1, transfer.receiverFanOut24h     / FANOUT_24H_CAP);
+  v[13] = transfer.passThroughRatio;
+  // amountVsTypical can swing widely; take a clipped log so it's well-behaved.
+  v[14] = Math.max(-1, Math.min(3, Math.log(transfer.amountVsTypical + 1e-3))) / 3;
+  v[15] = transfer.isRoundAmount;
+  // Onward-flow shape (already 0..1).
+  v[16] = transfer.onwardNonBankExitShare;
+  v[17] = transfer.onwardStructuredShare;
+  v[18] = transfer.onwardYoungReceiverShare;
+  return v;
+}
+
+/** Encode a whole timeline into a [TRANSFERS_PER_TIMELINE][FEATURES_PER_TRANSFER] matrix. */
+function encodeTimeline(timeline) {
+  return timeline.transfers.map(encodeTransfer);
+}
+
+
+/* ========================= 5. THE MODEL ========================= */
+/*
+   A miniature Transformer encoder. Step by step, the forward pass:
+     1. Projection      – lift each transfer's 15 features to MODEL_DIM,
+                          and add a positional encoding so order matters.
+     2. Self-attention  – let every transfer "look at" every other transfer
+                          and gather context (this is how a lone small
+                          transfer can be judged against the burst around it).
+     3. Feed-forward    – a small per-transfer neural network.
+     4. Attention pool  – collapse the sequence into ONE vector by taking a
+                          learned weighted average (the model decides which
+                          transfers matter most).
+     5. Classifier      – turn that vector into a 0..1 scam probability.
+   Residual connections + layer norm (steps 2 & 3) keep training stable.
+*/
+
+let modelWeights = null;       // all trainable tensors, by name
+let positionalEncoding = null; // fixed [TRANSFERS_PER_TIMELINE][MODEL_DIM] matrix
+
+/** Create a trainable weight matrix with Glorot/Xavier-uniform initialisation. */
+function createWeight(shape) {
+  const [fanIn, fanOut] = shape;
+  const limit = Math.sqrt(6 / (fanIn + fanOut));
+  return tf.variable(tf.randomUniform(shape, -limit, limit));
+}
+const createZeros = (shape) => tf.variable(tf.zeros(shape));
+const createOnes  = (shape) => tf.variable(tf.ones(shape));
+
+/**
+ * (Re)build the model: dispose any old weights, create fresh ones, and
+ * precompute the positional encoding. Also updates the on-screen param count.
+ */
+function buildModel() {
+  if (modelWeights) Object.values(modelWeights).forEach((w) => w.dispose());
+  if (positionalEncoding) positionalEncoding.dispose();
+
+  modelWeights = {
+    inputProjection: createWeight([FEATURES_PER_TRANSFER, MODEL_DIM]), inputBias: createZeros([MODEL_DIM]),
+    query:           createWeight([MODEL_DIM, MODEL_DIM]),
+    key:             createWeight([MODEL_DIM, MODEL_DIM]),
+    value:           createWeight([MODEL_DIM, MODEL_DIM]),
+    attentionOutput: createWeight([MODEL_DIM, MODEL_DIM]),
+    norm1Gain: createOnes([MODEL_DIM]), norm1Bias: createZeros([MODEL_DIM]),
+    feedForward1: createWeight([MODEL_DIM, FEEDFORWARD_DIM]), feedForward1Bias: createZeros([FEEDFORWARD_DIM]),
+    feedForward2: createWeight([FEEDFORWARD_DIM, MODEL_DIM]), feedForward2Bias: createZeros([MODEL_DIM]),
+    norm2Gain: createOnes([MODEL_DIM]), norm2Bias: createZeros([MODEL_DIM]),
+    poolingQuery: createWeight([MODEL_DIM, 1]),
+    classifier:   createWeight([MODEL_DIM, 1]), classifierBias: createZeros([1]),
+  };
+
+  // Standard sinusoidal positional encoding: gives each position a unique fingerprint.
+  const encodingRows = [];
+  for (let pos = 0; pos < TRANSFERS_PER_TIMELINE; pos++) {
+    const row = [];
+    for (let dim = 0; dim < MODEL_DIM; dim++) {
+      const pair = Math.floor(dim / 2);
+      const denominator = Math.pow(10000, (2 * pair) / MODEL_DIM);
+      row.push(dim % 2 === 0 ? Math.sin(pos / denominator) : Math.cos(pos / denominator));
+    }
+    encodingRows.push(row);
+  }
+  positionalEncoding = tf.tensor2d(encodingRows);
+
+  const totalParams = Object.values(modelWeights).reduce((sum, w) => sum + w.size, 0);
+  byId('params').textContent = totalParams.toLocaleString();
+}
+
+/**
+ * Apply a dense (linear) layer to a 3D tensor of shape [batch, sequence, inFeatures].
+ * We flatten the first two dims, do one matrix multiply, then reshape back.
+ */
+function applyDense(input3d, weightMatrix, biasVector) {
+  const [batchSize, sequenceLength, inFeatures] = input3d.shape;
+  const outFeatures = weightMatrix.shape[1];
+  const flattened = input3d.reshape([batchSize * sequenceLength, inFeatures]);
+  return tf.matMul(flattened, weightMatrix).add(biasVector).reshape([batchSize, sequenceLength, outFeatures]);
+}
+
+/** Layer normalisation over the last axis, with learnable gain & bias. */
+function layerNorm(x, gain, bias) {
+  const mean = x.mean(-1, true);
+  const variance = x.sub(mean).square().mean(-1, true);
+  const normalised = x.sub(mean).div(variance.add(LAYERNORM_EPSILON).sqrt());
+  return normalised.mul(gain).add(bias);
+}
+
+/**
+ * Run the model over a batch of encoded timelines.
+ * @param {tf.Tensor3D} encodedBatch  shape [batch, TRANSFERS_PER_TIMELINE, FEATURES_PER_TRANSFER]
+ * @param {{returnEmbedding?: boolean}} options
+ * @returns {{ scamProbability: tf.Tensor1D, embedding?: tf.Tensor2D }}
+ *          (caller is responsible for disposing the returned tensors)
+ */
+function forwardPass(encodedBatch, options = {}) {
+  return tf.tidy(() => {
+    const batchSize = encodedBatch.shape[0];
+    const noBias  = tf.zeros([MODEL_DIM]); // these projections use no bias term
+    const noBias1 = tf.zeros([1]);
+
+    // 1. Project features up to MODEL_DIM and add position information.
+    let hidden = applyDense(encodedBatch, modelWeights.inputProjection, modelWeights.inputBias)
+                   .add(positionalEncoding);
+
+    // 2. Single-head self-attention.
+    const queries = applyDense(hidden, modelWeights.query, noBias);
+    const keys    = applyDense(hidden, modelWeights.key,   noBias);
+    const values  = applyDense(hidden, modelWeights.value, noBias);
+    // attentionScores[i][j] = how much transfer i should attend to transfer j
+    const attentionScores  = tf.matMul(queries, keys, false, true).div(Math.sqrt(MODEL_DIM));
+    const attentionWeights = tf.softmax(attentionScores, -1);
+    const attended         = tf.matMul(attentionWeights, values);
+    const attentionOutput  = applyDense(attended, modelWeights.attentionOutput, noBias);
+    // Residual + normalise.
+    const afterAttention = layerNorm(hidden.add(attentionOutput), modelWeights.norm1Gain, modelWeights.norm1Bias);
+
+    // 3. Position-wise feed-forward network (with residual + normalise).
+    const feedForwardHidden = applyDense(afterAttention, modelWeights.feedForward1, modelWeights.feedForward1Bias).relu();
+    const feedForwardOutput = applyDense(feedForwardHidden, modelWeights.feedForward2, modelWeights.feedForward2Bias);
+    const encoded = layerNorm(afterAttention.add(feedForwardOutput), modelWeights.norm2Gain, modelWeights.norm2Bias);
+
+    // 4. Attention pooling: a learned weighted average over the sequence -> one vector.
+    const poolingScores  = applyDense(encoded, modelWeights.poolingQuery, noBias1).reshape([batchSize, TRANSFERS_PER_TIMELINE]);
+    const poolingWeights  = tf.softmax(poolingScores, -1);
+    const timelineEmbedding = encoded.mul(poolingWeights.reshape([batchSize, TRANSFERS_PER_TIMELINE, 1])).sum(1);
+
+    // 5. Classify: embedding -> single scam probability in 0..1.
+    const logit = tf.matMul(timelineEmbedding, modelWeights.classifier).add(modelWeights.classifierBias);
+    const scamProbability = tf.sigmoid(logit).reshape([batchSize]);
+
+    // tf.keep(...) protects these from tidy()'s automatic cleanup.
+    const result = { scamProbability: tf.keep(scamProbability.clone()) };
+    if (options.returnEmbedding) result.embedding = tf.keep(timelineEmbedding.clone());
+    return result;
+  });
+}
+
+/** Binary cross-entropy loss between predicted probabilities and 0/1 labels. */
+function binaryCrossEntropy(predicted, actual) {
+  const epsilon = 1e-6; // keep log() away from 0
+  const positiveTerm = actual.mul(predicted.add(epsilon).log());
+  const negativeTerm = tf.scalar(1).sub(actual).mul(tf.scalar(1).sub(predicted).add(epsilon).log());
+  return positiveTerm.add(negativeTerm).mean().mul(-1);
+}
+
+
+/* ========================= 6. APP STATE ========================= */
+
+let corpus = [];            // array of labelled timelines (the editable dataset)
+let isModelTrained = false;
+let isBusy = false;         // guards against overlapping generate/train clicks
+let nextTimelineId = 1;
+let heldOutTensors = null;  // 25% test split, kept for the embedding projection
+
+// Values driven by the sliders in the UI.
+const uiSettings = {
+  accountCount: 160,
+  scamShare:    0.40,
+  trainingEpochs: 70,
+};
+
+
+/* ========================= 7. CORPUS UI ========================= */
+
+/** Generate one timeline, choosing its type according to the scam-share slider. */
+function generateRandomTimeline() {
+  const roll = Math.random();
+  let kind;
+  if (roll < uiSettings.scamShare)            kind = 'scam';
+  else if (roll < uiSettings.scamShare + 0.25) kind = 'legitbig'; // 25% are hard legit cases
+  else                                         kind = 'legit';
+  const timeline = createAccountTimeline(kind);
+  timeline.id = nextTimelineId++;
+  return timeline;
+}
+
+/** Compute the summary numbers shown in one corpus table row. */
+function summariseTimeline(timeline) {
+  const outboundCount   = timeline.transfers.filter((t) => t.direction === 1).length;
+  const peakAmount      = Math.max(...timeline.transfers.map((t) => t.amount));
+  const hasNewPayee     = timeline.transfers.some((t) => t.isNewPayee === 1);
+  const maxPassThrough  = Math.max(...timeline.transfers.map((t) => t.passThroughRatio));
+  return { outboundCount, peakAmount, hasNewPayee, maxPassThrough };
+}
+
+/** Re-draw the whole corpus table from the current `corpus` array. */
+function renderCorpusTable() {
+  const body = byId('corpus-body');
+  body.innerHTML = '';
+  let legitCount = 0, scamCount = 0;
+
+  corpus.forEach((timeline, index) => {
+    if (timeline.label) scamCount++; else legitCount++;
+    const summary = summariseTimeline(timeline);
+
+    const row = document.createElement('tr');
+    row.className = timeline.label ? 'scam' : 'legit';
+    row.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${escapeHtml(timeline.scenario)}${timeline.accountId ? ` <span style="color:var(--muted)">· ${escapeHtml(timeline.accountId)}</span>` : ''}</td>
+      <td>${summary.outboundCount}</td>
+      <td>${formatRinggit(summary.peakAmount)}</td>
+      <td>${summary.hasNewPayee ? 'yes' : '—'}</td>
+      <td style="color:${summary.maxPassThrough > 0.5 ? 'var(--alert)' : 'var(--muted)'}">${(summary.maxPassThrough * 100).toFixed(0)}%</td>
+      <td>
+        <select class="lblsel" data-index="${index}">
+          <option value="0"${timeline.label ? '' : ' selected'}>legit</option>
+          <option value="1"${timeline.label ? ' selected' : ''}>scam</option>
+        </select>
+      </td>
+      <td>
+        <button class="mini" data-expand="${index}">edit</button>
+        <button class="mini" data-delete="${index}" style="color:var(--alert)">del</button>
+      </td>`;
+    body.appendChild(row);
+  });
+
+  byId('p-total').textContent  = corpus.length;
+  byId('p-legit').textContent  = legitCount;
+  byId('p-scam').textContent   = scamCount;
+  byId('corpus-n').textContent = corpus.length;
+  byId('export').disabled = corpus.length === 0;
+
+  // Wire up the per-row controls.
+  body.querySelectorAll('.lblsel').forEach((select) => {
+    select.onchange = (e) => { corpus[+e.target.dataset.index].label = +e.target.value; renderCorpusTable(); };
+  });
+  body.querySelectorAll('[data-delete]').forEach((button) => {
+    button.onclick = (e) => { corpus.splice(+e.target.dataset.delete, 1); renderCorpusTable(); };
+  });
+  body.querySelectorAll('[data-expand]').forEach((button) => {
+    button.onclick = (e) => toggleTransferEditor(+e.target.dataset.expand, e.target.closest('tr'));
+  });
+}
+
+// The columns shown in the per-transfer editor, declared as data so the
+// grid and its change-handler stay in sync. `kind` controls how the value
+// is read/written: 'percent' is stored as a 0..1 ratio but shown as 0..100.
+const EDITOR_COLUMNS = [
+  { key: 'direction',              label: 'dir',        kind: 'select', options: [['1', 'out'], ['0', 'in']] },
+  { key: 'amount',                 label: 'amount RM',  kind: 'number' },
+  { key: 'hourOfDay',              label: 'hour',       kind: 'number' },
+  { key: 'isNewPayee',             label: 'new payee',  kind: 'select', options: [['0', 'no'], ['1', 'yes']] },
+  { key: 'receiverAccountAgeDays', label: 'recv age d', kind: 'number' },
+  { key: 'balanceDrainRatio',      label: 'drain %',    kind: 'percent' },
+  { key: 'receiverFanInLastHour',  label: 'fan-in 1h',  kind: 'number' },
+  { key: 'receiverFanInLast24h',   label: 'fan-in 24h', kind: 'number' },
+  { key: 'receiverFanInLast7d',    label: 'fan-in 7d',  kind: 'number' },
+  { key: 'receiverFanOut1h',       label: 'fan-out 1h', kind: 'number' },
+  { key: 'receiverFanOut24h',      label: 'fan-out 24h', kind: 'number' },
+  { key: 'passThroughRatio',       label: 'pass %',     kind: 'percent' },
+  { key: 'onwardNonBankExitShare',   label: 'exit non-bank %', kind: 'percent' },
+  { key: 'onwardStructuredShare',    label: 'structured %',    kind: 'percent' },
+  { key: 'onwardYoungReceiverShare', label: 'young recv %',    kind: 'percent' },
+];
+
+/** Render one editable cell for a transfer field. */
+function renderEditorCell(transfer, transferIndex, column) {
+  if (column.kind === 'select') {
+    const options = column.options
+      .map(([value, text]) => `<option value="${value}"${String(transfer[column.key]) === value ? ' selected' : ''}>${text}</option>`)
+      .join('');
+    return `<td><select data-field="${column.key}" data-index="${transferIndex}">${options}</select></td>`;
+  }
+  const shownValue = column.kind === 'percent'
+    ? (transfer[column.key] * 100).toFixed(0)
+    : Math.round(transfer[column.key]);
+  return `<td><input type="number" data-field="${column.key}" data-index="${transferIndex}" value="${shownValue}"></td>`;
+}
+
+/** Expand/collapse the inline transfer editor under a corpus row. */
+function toggleTransferEditor(timelineIndex, row) {
+  const next = row.nextElementSibling;
+  if (next && next.classList.contains('editrow')) { next.remove(); return; } // collapse if open
+
+  const timeline = corpus[timelineIndex];
+  const headerCells = EDITOR_COLUMNS.map((c) => `<th>${c.label}</th>`).join('');
+  const bodyRows = timeline.transfers.map((transfer, transferIndex) => {
+    const cells = EDITOR_COLUMNS.map((column) => renderEditorCell(transfer, transferIndex, column)).join('');
+    return `<tr><td>${transferIndex + 1}</td>${cells}</tr>`;
+  }).join('');
+
+  const editorRow = document.createElement('tr');
+  editorRow.className = 'editrow';
+  editorRow.innerHTML = `
+    <td colspan="8"><div class="editbox"><table class="edittbl">
+      <thead><tr><th>#</th>${headerCells}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table></div></td>`;
+  row.after(editorRow);
+
+  // Apply edits back into the corpus data.
+  editorRow.querySelectorAll('input, select').forEach((input) => {
+    input.onchange = (e) => {
+      const transferIndex = +e.target.dataset.index;
+      const field = e.target.dataset.field;
+      const column = EDITOR_COLUMNS.find((c) => c.key === field);
+      const transfer = corpus[timelineIndex].transfers[transferIndex];
+
+      let value = +e.target.value;
+      if (column.kind === 'percent') value = Math.max(0, Math.min(100, value)) / 100;
+      transfer[field] = value;
+
+      // Editing the amount changes two derived features, so recompute them.
+      if (field === 'amount') {
+        transfer.amountVsTypical = transfer.amount / (corpus[timelineIndex].ownerTypicalAmount || 300);
+        transfer.isRoundAmount = isRoundThousands(transfer.amount) ? 1 : 0;
+      }
+      renderCorpusTable();
+    };
+  });
+}
+
+
+/* ===================== 7b. IMPORT / EXPORT ===================== */
+/*
+   Load a corpus prepared in the training-data/ layout (CSV: one row per
+   transfer, or JSON: {format:'scam-sentinel-corpus', timelines:[...]}),
+   and export the current corpus as JSON in the same layout.
+
+   Rules (mirrors training-data/TRAINING-DATA-GUIDE.md):
+     - rows are grouped by account_id and ordered by seq (or timestamp);
+     - the most recent TRANSFERS_PER_TIMELINE transfers are kept; shorter
+       histories are left-padded with the canonical routine transfer;
+     - hour_of_day / seconds_since_previous are derived from timestamp
+       when blank; receiver_account_age_days defaults to 365; the three
+       onward shares default to 0; amount_vs_typical / is_round_amount
+       are derived when blank;
+     - an account with any invalid row is rejected and reported.
+*/
+
+// CSV column -> transfer field. JSON files already use the field names.
+const IMPORT_COLUMNS = {
+  account_id: 'accountId', seq: 'seq', label: 'label', scenario: 'scenario', owner_typical_amount: 'ownerTypicalAmount',
+  timestamp: 'timestamp', amount: 'amount', direction: 'direction', hour_of_day: 'hourOfDay',
+  seconds_since_previous: 'secondsSincePrevious', is_new_payee: 'isNewPayee', receiver_account_age_days: 'receiverAccountAgeDays',
+  balance_drain_ratio: 'balanceDrainRatio', receiver_fan_in_1h: 'receiverFanInLastHour', receiver_fan_in_24h: 'receiverFanInLast24h',
+  receiver_fan_in_7d: 'receiverFanInLast7d', receiver_fan_out_1h: 'receiverFanOut1h', receiver_fan_out_24h: 'receiverFanOut24h',
+  pass_through_ratio: 'passThroughRatio', onward_nonbank_exit_share: 'onwardNonBankExitShare',
+  onward_structured_share: 'onwardStructuredShare', onward_young_receiver_share: 'onwardYoungReceiverShare',
+  amount_vs_typical: 'amountVsTypical', is_round_amount: 'isRoundAmount',
+};
+const IMPORT_REQUIRED = ['amount', 'direction', 'isNewPayee', 'balanceDrainRatio', 'receiverFanInLastHour', 'receiverFanInLast24h',
+  'receiverFanInLast7d', 'receiverFanOut1h', 'receiverFanOut24h', 'passThroughRatio'];
+const IMPORT_RATIOS = ['balanceDrainRatio', 'passThroughRatio', 'onwardNonBankExitShare', 'onwardStructuredShare', 'onwardYoungReceiverShare'];
+const EXPORT_FIELDS = ['timestamp', 'amount', 'direction', 'hourOfDay', 'secondsSincePrevious', 'isNewPayee', 'receiverAccountAgeDays',
+  'balanceDrainRatio', 'receiverFanInLastHour', 'receiverFanInLast24h', 'receiverFanInLast7d', 'receiverFanOut1h', 'receiverFanOut24h',
+  'passThroughRatio', 'onwardNonBankExitShare', 'onwardStructuredShare', 'onwardYoungReceiverShare', 'amountVsTypical', 'isRoundAmount'];
+
+/** Minimal RFC-4180 CSV parser -> array of {header: value} objects (headers lower-cased). */
+function parseCsv(text) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+      else field += c;
+    } else if (c === '"') inQuotes = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.some((f) => f !== '')) rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  row.push(field);
+  if (row.some((f) => f !== '')) rows.push(row);
+  if (rows.length === 0) return [];
+  const header = rows.shift().map((h) => h.trim().toLowerCase());
+  return rows.map((r) => Object.fromEntries(header.map((h, j) => [h, (r[j] ?? '').trim()])));
+}
+
+/** Turn one raw imported row (already keyed by transfer field name) into a clean transfer, or record problems. */
+function normaliseImportedTransfer(raw, previousTimestampMs, problems) {
+  const num = (key) => {
+    const v = raw[key];
+    if (v === undefined || v === null || v === '') return undefined;
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? n : NaN;
+  };
+  const t = {};
+  for (const key of Object.keys(raw)) if (!['timestamp', 'direction', 'accountId', 'seq', 'label', 'scenario', 'ownerTypicalAmount', 'padded'].includes(key)) t[key] = num(key);
+
+  const dir = String(raw.direction ?? '').trim().toLowerCase();
+  t.direction = (dir === 'out' || dir === '1') ? 1 : (dir === 'in' || dir === '0') ? 0 : NaN;
+
+  let timestampMs;
+  if (raw.timestamp) {
+    timestampMs = Date.parse(raw.timestamp);
+    if (Number.isNaN(timestampMs)) problems.push('bad timestamp');
+    else {
+      const hourInOffset = /T(\d{2}):/.exec(String(raw.timestamp)); // hour as written (keeps the +08:00 local hour)
+      if (t.hourOfDay === undefined) t.hourOfDay = hourInOffset ? +hourInOffset[1] : new Date(timestampMs).getUTCHours();
+      if (t.secondsSincePrevious === undefined) {
+        t.secondsSincePrevious = previousTimestampMs === undefined ? 86400 : Math.max(0, Math.round((timestampMs - previousTimestampMs) / 1000));
+      }
+    }
+  }
+
+  for (const key of IMPORT_REQUIRED) if (t[key] === undefined || Number.isNaN(t[key])) problems.push(`missing or invalid ${key}`);
+  if (t.hourOfDay === undefined || t.secondsSincePrevious === undefined) problems.push('need timestamp, or hour_of_day + seconds_since_previous');
+  for (const key of Object.keys(t)) if (Number.isNaN(t[key])) problems.push(`${key} is not a number`);
+
+  let defaulted = 0;
+  if (t.receiverAccountAgeDays === undefined) { t.receiverAccountAgeDays = 365; defaulted++; }
+  for (const key of ['onwardNonBankExitShare', 'onwardStructuredShare', 'onwardYoungReceiverShare']) if (t[key] === undefined) t[key] = 0;
+  if (t.direction === 0) { t.amountVsTypical ??= 1; t.isRoundAmount ??= 0; }
+
+  for (const key of IMPORT_RATIOS) if (t[key] < 0 || t[key] > 1) problems.push(`${key} outside 0..1`);
+  if (t.hourOfDay < 0 || t.hourOfDay > 23) problems.push('hour_of_day outside 0..23');
+  if (!(t.amount > 0)) problems.push('amount must be > 0');
+  return { transfer: t, timestampMs, defaulted };
+}
+
+/** Build one corpus timeline from an account's raw rows. Returns { timeline } or { error }. */
+function buildImportedTimeline(accountId, rawRows, meta) {
+  const label = Number(meta.label);
+  if (label !== 0 && label !== 1) return { error: 'label must be 0 or 1' };
+  const ownerTypicalAmount = Number(meta.ownerTypicalAmount);
+  if (!(ownerTypicalAmount > 0)) return { error: 'owner_typical_amount must be > 0' };
+
+  const rows = rawRows.slice();
+  if (rows.every((r) => r.seq !== undefined && r.seq !== '')) rows.sort((a, b) => Number(a.seq) - Number(b.seq));
+  else if (rows.every((r) => r.timestamp)) rows.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+
+  const transfers = [];
+  let previousTimestampMs, defaulted = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const problems = [];
+    const { transfer, timestampMs, defaulted: d } = normaliseImportedTransfer(rows[i], previousTimestampMs, problems);
+    if (problems.length) return { error: `row ${i + 1}: ${problems[0]}` };
+    transfers.push(createTransfer({ ...transfer, ownerTypicalAmount }));
+    previousTimestampMs = timestampMs;
+    defaulted += d;
+  }
+  if (transfers.length === 0) return { error: 'no transfers' };
+
+  const kept = transfers.slice(-TRANSFERS_PER_TIMELINE);
+  const padded = TRANSFERS_PER_TIMELINE - kept.length;
+  while (kept.length < TRANSFERS_PER_TIMELINE) {
+    const filler = createTransfer({ ...createCanonicalNormalTransfer(), amount: ownerTypicalAmount, ownerTypicalAmount });
+    filler.padded = true;
+    kept.unshift(filler);
+  }
+  return {
+    timeline: { accountId, transfers: kept, label, scenario: String(meta.scenario || (label ? 'scam' : 'legit')).slice(0, 40), ownerTypicalAmount, padded },
+    defaulted,
+  };
+}
+
+/** Parse CSV or JSON text into { timelines, report }. Pure: no DOM access. */
+function importCorpusText(text) {
+  const clean = text.replace(/^﻿/, '');
+  const groups = new Map(); // accountId -> { rows, meta }
+  const addRow = (accountId, row, meta) => {
+    if (!groups.has(accountId)) groups.set(accountId, { rows: [], meta });
+    const g = groups.get(accountId);
+    g.rows.push(row);
+    if (meta.label !== undefined && g.meta.label !== undefined && String(meta.label) !== String(g.meta.label)) g.inconsistentLabel = true;
+  };
+
+  if (clean.trimStart().startsWith('{')) {
+    const data = JSON.parse(clean);
+    if (!Array.isArray(data.timelines)) throw new Error('JSON has no "timelines" array');
+    data.timelines.forEach((tl, i) => {
+      const id = String(tl.id ?? `row-${i + 1}`);
+      (tl.transfers || []).forEach((tr) => addRow(id, tr, { label: tl.label, scenario: tl.scenario, ownerTypicalAmount: tl.ownerTypicalAmount }));
+      if (!(tl.transfers || []).length) groups.set(id, { rows: [], meta: {} });
+    });
+  } else {
+    const rows = parseCsv(clean);
+    if (rows.length === 0) throw new Error('CSV is empty');
+    const unknown = Object.keys(rows[0]).filter((h) => !(h in IMPORT_COLUMNS));
+    if (!('account_id' in rows[0])) throw new Error('CSV has no account_id column');
+    rows.forEach((raw) => {
+      const mapped = {};
+      for (const [col, field] of Object.entries(IMPORT_COLUMNS)) if (col in raw) mapped[field] = raw[col];
+      addRow(mapped.accountId || '(blank)', mapped, { label: mapped.label, scenario: mapped.scenario, ownerTypicalAmount: mapped.ownerTypicalAmount });
+    });
+    if (unknown.length) console.warn('import: ignored columns', unknown);
+  }
+
+  const timelines = [], rejected = [];
+  let paddedAccounts = 0, defaultedRows = 0;
+  for (const [accountId, g] of groups) {
+    if (g.inconsistentLabel) { rejected.push(`${accountId}: label differs between rows`); continue; }
+    const result = buildImportedTimeline(accountId, g.rows, g.meta);
+    if (result.error) { rejected.push(`${accountId}: ${result.error}`); continue; }
+    timelines.push(result.timeline);
+    if (result.timeline.padded) paddedAccounts++;
+    defaultedRows += result.defaulted;
+  }
+  const scam = timelines.filter((t) => t.label === 1).length;
+  return { timelines, report: { accounts: groups.size, imported: timelines.length, scam, legit: timelines.length - scam, paddedAccounts, defaultedRows, rejected } };
+}
+
+/** Replace the corpus with imported timelines and show a summary line. */
+function applyImportedCorpus({ timelines, report }, fileName) {
+  corpus = timelines.map((tl) => ({ ...tl, id: nextTimelineId++ }));
+  showCorpus();
+  const parts = [`imported ${report.imported} of ${report.accounts} accounts from ${escapeHtml(fileName)}`,
+    `${report.scam} scam / ${report.legit} legit`];
+  if (report.paddedAccounts) parts.push(`${report.paddedAccounts} padded to ${TRANSFERS_PER_TIMELINE} transfers`);
+  if (report.defaultedRows) parts.push(`${report.defaultedRows} rows given default receiver age 365`);
+  if (report.rejected.length) parts.push(`<span style="color:var(--alert)">${report.rejected.length} rejected</span>: ${escapeHtml(report.rejected.slice(0, 3).join('; '))}${report.rejected.length > 3 ? ' …' : ''}`);
+  const el = byId('import-report');
+  el.innerHTML = parts.join(' · ');
+  el.hidden = false;
+}
+
+function showImportError(message) {
+  const el = byId('import-report');
+  el.innerHTML = `<span style="color:var(--alert)">import failed:</span> ${escapeHtml(message)}`;
+  el.hidden = false;
+}
+
+/** Validate and activate a receiver-signature library file. */
+function applySignatureLibrary(data, sourceName) {
+  const clean = (list) => (Array.isArray(list) ? list : []).filter((s) => SIGNATURE_FIELDS.every((k) => Number.isFinite(s[k]) && s[k] >= 0));
+  const library = { scam: clean(data.scam), legit: clean(data.legit) };
+  if (library.scam.length === 0 && library.legit.length === 0) throw new Error('signature file has no usable scam or legit entries');
+  signatureLibrary = library;
+  const label = `${escapeHtml(data.source || sourceName)} (${library.scam.length} scam / ${library.legit.length} legit)`;
+  byId('sig-state').innerHTML = label;
+  byId('sig-state').style.color = 'var(--safe)';
+  byId('sig-reset').hidden = false;
+  const el = byId('import-report');
+  el.innerHTML = `loaded receiver signatures from ${escapeHtml(sourceName)}: ${library.scam.length} scam / ${library.legit.length} legit · click <b>Generate corpus</b> to build synthetic victims paying real-shaped receivers`;
+  el.hidden = false;
+}
+
+function resetSignatureLibrary() {
+  signatureLibrary = null;
+  byId('sig-state').textContent = 'synthetic ranges';
+  byId('sig-state').style.color = '';
+  byId('sig-reset').hidden = true;
+}
+
+/** Route imported text: a signature library activates the generator; anything else replaces the corpus. */
+function ingestImportedText(text, sourceName) {
+  if (text.trimStart().replace(/^﻿/, '').startsWith('{')) {
+    const data = JSON.parse(text.replace(/^﻿/, ''));
+    if (data.format === 'scam-sentinel-mule-signatures') { applySignatureLibrary(data, sourceName); return; }
+  }
+  applyImportedCorpus(importCorpusText(text), sourceName);
+}
+
+function importCorpusFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { ingestImportedText(reader.result, file.name); }
+    catch (err) { showImportError(err.message); }
+  };
+  reader.readAsText(file);
+}
+
+/** Fetch a corpus file by path/URL relative to this page (works when served over http, not from file://). */
+async function loadCorpusFromUrl(url) {
+  if (isBusy || !url) return;
+  byId('load-path').value = url;
+  try {
+    if (location.protocol === 'file:') {
+      throw new Error('browsers block fetch() from file:// pages. Serve the folder over http first: "node tools/serve.js", then open http://localhost:8080/scam-sentinel.html');
+    }
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+    ingestImportedText(await res.text(), url);
+  } catch (err) {
+    showImportError(err.message);
+  }
+}
+
+/** Serialise the current corpus in the training-data JSON layout and trigger a download. */
+function exportCorpusJson() {
+  const roundTo = (v, places) => Math.round(v * 10 ** places) / 10 ** places;
+  const exportTransfer = (t) => {
+    const out = {};
+    for (const key of EXPORT_FIELDS) {
+      if (t[key] === undefined) continue;
+      if (key === 'timestamp') { out[key] = t[key]; continue; }
+      out[key] = ['amount', 'amountVsTypical'].includes(key) ? roundTo(t[key], 2)
+        : IMPORT_RATIOS.includes(key) ? roundTo(t[key], 3)
+        : Math.round(t[key]);
+    }
+    return out;
+  };
+  const data = {
+    format: 'scam-sentinel-corpus', version: 1,
+    notes: `Exported from Scam Sentinel on ${new Date().toISOString().slice(0, 10)}. Synthetic rows have no timestamp.`,
+    timelines: corpus.map((tl) => ({
+      id: tl.accountId || `SYN-${String(tl.id).padStart(4, '0')}`, label: tl.label, scenario: tl.scenario,
+      ownerTypicalAmount: roundTo(tl.ownerTypicalAmount, 2), transfers: tl.transfers.map(exportTransfer),
+    })),
+  };
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `scam-sentinel-corpus-${corpus.length}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
+
+/* ========================= 8. TRAINING ========================= */
+
+/** Build {x, y} TF.js tensors from a list of corpus indices. */
+function buildTensorsFromIndices(indices) {
+  return {
+    x: tf.tensor3d(indices.map((i) => encodeTimeline(corpus[i]))),
+    y: tf.tensor1d(indices.map((i) => corpus[i].label)),
+  };
+}
+
+/** Fisher–Yates in-place shuffle. */
+function shuffleInPlace(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+async function trainModel() {
+  if (isBusy || corpus.length === 0) return;
+  isBusy = true;
+  byId('train').disabled = true;
+  byId('gen').disabled = true;
+  byId('train').textContent = 'Training…';
+
+  // Split the corpus 75% train / 25% held-out test.
+  const indices = shuffleInPlace([...corpus.keys()]);
+  const splitPoint = Math.floor(indices.length * 0.75);
+  const trainSet = buildTensorsFromIndices(indices.slice(0, splitPoint));
+  const testSet  = buildTensorsFromIndices(indices.slice(splitPoint));
+
+  buildModel();
+  const optimizer = tf.train.adam(parseFloat(byId('lr').value));
+  const lossHistory = [];
+
+  for (let epoch = 0; epoch < uiSettings.trainingEpochs; epoch++) {
+    // optimizer.minimize runs the forward pass, backprop, and a weight update.
+    const lossTensor = optimizer.minimize(() => {
+      const { scamProbability } = forwardPass(trainSet.x);
+      const loss = binaryCrossEntropy(scamProbability, trainSet.y);
+      scamProbability.dispose();
+      return loss;
+    }, true);
+
+    const lossValue = lossTensor.dataSync()[0];
+    lossTensor.dispose();
+    lossHistory.push(lossValue);
+
+    // Update the chart every couple of epochs and yield to the browser.
+    if (epoch % 2 === 0 || epoch === uiSettings.trainingEpochs - 1) {
+      byId('o-epoch').textContent = epoch + 1;
+      byId('o-loss').textContent = lossValue.toFixed(4);
+      drawLossCurve(lossHistory);
+      await tf.nextFrame();
+    }
+  }
+
+  // Evaluate on the held-out set: accuracy and recall (share of scams caught).
+  const { scamProbability } = forwardPass(testSet.x);
+  const stats = tf.tidy(() => {
+    const predicted = scamProbability.greater(0.5).cast('float32');
+    const accuracy = predicted.equal(testSet.y).mean().dataSync()[0];
+    const truePositives = predicted.mul(testSet.y).sum().dataSync()[0];
+    const actualPositives = testSet.y.sum().dataSync()[0];
+    return { accuracy, recall: actualPositives > 0 ? truePositives / actualPositives : 0 };
+  });
+  scamProbability.dispose();
+
+  byId('o-acc').textContent = (stats.accuracy * 100).toFixed(1) + '%';
+  byId('o-rec').textContent = (stats.recall * 100).toFixed(1) + '%';
+
+  // Free the train tensors; keep the test set for the embedding scatter plot.
+  trainSet.x.dispose();
+  trainSet.y.dispose();
+  heldOutTensors = testSet;
+
+  isModelTrained = true;
+  byId('model-state').textContent = 'trained';
+  byId('model-state').style.color = 'var(--safe)';
+  byId('score').disabled = false;
+  byId('project').disabled = false;
+  byId('train').textContent = 'Train model';
+  byId('train').disabled = false;
+  byId('gen').disabled = false;
+  isBusy = false;
+}
+
+
+/* ======================== 9. PREDICTION ======================== */
+/*
+   To "score a transfer", we drop it onto the end of a FIXED, neutral
+   account timeline and ask the model for a scam probability.
+
+   IMPORTANT — why the background is fixed: the model reads the whole
+   timeline, so if we built a *random* background history every time,
+   the same inputs could score differently on each click (the random
+   history would nudge the result). We therefore use one deterministic,
+   representative "boring normal account" so the score is a pure
+   function of the transfer you entered — click Score twice, get the
+   same answer.
+
+   To EXPLAIN the score we use leave-one-out occlusion: replace each
+   transfer with a neutral baseline, re-score, and see how far the risk
+   falls. The transfer whose removal drops the risk most is what drove
+   the decision ("remove this transfer and the alarm goes away").
+*/
+
+// The fixed "typical transfer size" for the synthetic account used during
+// scoring. Used to compute amountVsTypical so it doesn't vary between clicks.
+const CANONICAL_TYPICAL_AMOUNT = 300;
+
+/** One ordinary, low-risk transfer — the building block of the fixed background. */
+function createCanonicalNormalTransfer() {
+  return createTransfer({
+    amount:                 CANONICAL_TYPICAL_AMOUNT,
+    direction:              1,
+    hourOfDay:              14,
+    secondsSincePrevious:   86400,
+    isNewPayee:             0,
+    receiverAccountAgeDays: 600,
+    balanceDrainRatio:      0.015,
+    receiverFanInLastHour:  0,
+    receiverFanInLast24h:   1,
+    receiverFanInLast7d:    3,
+    receiverFanOut1h:       0,
+    receiverFanOut24h:      0,
+    passThroughRatio:       0.05,
+    onwardNonBankExitShare:   0.05,
+    onwardStructuredShare:    0.05,
+    onwardYoungReceiverShare: 0.05,
+    ownerTypicalAmount:     CANONICAL_TYPICAL_AMOUNT,
+  });
+}
+
+/** Read the score form into a transfer object (deterministic — no randomness). */
+function readScoredTransfer() {
+  const amount = +byId('f-amt').value;
+  return createTransfer({
+    amount,
+    direction:              +byId('f-dir').value,
+    hourOfDay:              +byId('f-hour').value,
+    secondsSincePrevious:   3600,
+    isNewPayee:             +byId('f-new').value,
+    receiverAccountAgeDays: +byId('f-age').value,
+    balanceDrainRatio:      +byId('f-drain').value / 100,
+    receiverFanInLastHour:  +byId('f-fi1').value,
+    receiverFanInLast24h:   +byId('f-fi24').value,
+    receiverFanInLast7d:    +byId('f-fi7').value,
+    receiverFanOut1h:       +byId('f-fo1').value,
+    receiverFanOut24h:      +byId('f-fo').value,
+    passThroughRatio:       +byId('f-pass').value / 100,
+    onwardNonBankExitShare:   +byId('f-exit').value / 100,
+    onwardStructuredShare:    +byId('f-struct').value / 100,
+    onwardYoungReceiverShare: +byId('f-young').value / 100,
+    ownerTypicalAmount:     CANONICAL_TYPICAL_AMOUNT,
+  });
+}
+
+// A deliberately ordinary transfer used as the "removed" baseline in occlusion.
+const BENIGN_BASELINE_ROW = encodeTransfer(createTransfer({
+  amount: 200, direction: 1, hourOfDay: 14, secondsSincePrevious: 86400,
+  isNewPayee: 0, receiverAccountAgeDays: 600, balanceDrainRatio: 0.02,
+  receiverFanInLastHour: 0, receiverFanInLast24h: 1, receiverFanInLast7d: 3,
+  receiverFanOut1h: 0, receiverFanOut24h: 0, passThroughRatio: 0.05,
+  onwardNonBankExitShare: 0.05, onwardStructuredShare: 0.05, onwardYoungReceiverShare: 0.05, ownerTypicalAmount: 200,
+  amountVsTypical: 1, isRoundAmount: 0,
+}));
+
+function scoreTransfer() {
+  if (!isModelTrained) return;
+
+  // Build a FIXED, representative normal background, then put the scored
+  // transfer at the end. Same inputs => identical timeline => identical score.
+  const transfers = [];
+  for (let i = 0; i < TRANSFERS_PER_TIMELINE - 1; i++) transfers.push(createCanonicalNormalTransfer());
+  transfers.push(readScoredTransfer());
+
+  const encodedTimeline = encodeTimeline({ transfers });
+
+  // Full-timeline risk.
+  const fullInput = tf.tensor3d([encodedTimeline]);
+  const fullResult = forwardPass(fullInput);
+  const fullRisk = fullResult.scamProbability.dataSync()[0];
+  fullResult.scamProbability.dispose();
+  fullInput.dispose();
+
+  // Occlusion: one variant per transfer, with that transfer replaced by the baseline.
+  const occludedBatch = [];
+  for (let i = 0; i < TRANSFERS_PER_TIMELINE; i++) {
+    const variant = encodedTimeline.map((row) => row.slice());
+    variant[i] = BENIGN_BASELINE_ROW.slice();
+    occludedBatch.push(variant);
+  }
+  const occludedInput = tf.tensor3d(occludedBatch);
+  const occludedResult = forwardPass(occludedInput);
+  const occludedRisks = Array.from(occludedResult.scamProbability.dataSync());
+  occludedResult.scamProbability.dispose();
+  occludedInput.dispose();
+
+  // Positive drop = removing this transfer lowered the risk = it pushed risk up.
+  const riskDrops = occludedRisks.map((risk) => fullRisk - risk);
+
+  showScoreResult(fullRisk, riskDrops, transfers);
+}
+
+/** Render the gauge, verdict text, and the per-transfer explanation strip. */
+function showScoreResult(risk, riskDrops, transfers) {
+  byId('result').classList.add('show');
+  drawGauge(risk);
+
+  const color = risk < 0.33 ? 'var(--safe)' : risk < 0.66 ? 'var(--watch)' : 'var(--alert)';
+  const headline = risk < 0.33 ? 'Fits the account\u2019s story'
+                 : risk < 0.66 ? 'Out of pattern \u2014 add friction'
+                 : 'Likely scam \u2192 mule';
+  const explanation = risk < 0.33
+      ? 'Consistent with this account\u2019s normal payment behaviour. Let it through.'
+    : risk < 0.66
+      ? 'Some signals deviate from the learned pattern. Surface an in-app scam warning and confirm the payee before release.'
+      : 'New payee with mule-like receiver behaviour (burst fan-in, rapid pass-through) while the account is being drained. Hold, cool off, and verify with the customer before release.';
+  byId('verdict').innerHTML = `<span style="color:${color}">${headline} \u00b7 ${(risk * 100).toFixed(1)}% scam risk</span><small>${explanation}</small>`;
+
+  // Draw one bar per transfer; height & warmth scale with how much it drove the risk.
+  const largestDrop = Math.max(...riskDrops.map(Math.abs), 1e-6);
+  const largestPositiveDrop = Math.max(...riskDrops, 1e-6);
+  byId('strip').innerHTML = riskDrops.map((drop, i) => {
+    const warmth = Math.max(0, drop) / largestPositiveDrop; // 0..1
+    const height = 16 + Math.round((Math.abs(drop) / largestDrop) * 38);
+    const cellColor = drop > 0
+      ? `rgb(${Math.round(48 + warmth * 207)},${Math.round(62 + warmth * 28)},${Math.round(78 - warmth * 26)})`
+      : '#212b36';
+    const transfer = transfers[i];
+    const tooltip = `#${i + 1} ${transfer.direction ? 'out' : 'in'} RM${formatRinggit(transfer.amount)}`
+      + ` \u00b7 ${transfer.isNewPayee ? 'new payee' : 'known payee'}`
+      + ` \u00b7 fan-in/24h ${transfer.receiverFanInLast24h}`
+      + ` \u00b7 fan-out/1h ${transfer.receiverFanOut1h}`
+      + ` \u00b7 pass-through ${(transfer.passThroughRatio * 100).toFixed(0)}%`
+      + ` \u00b7 removing it changes risk by ${(drop * 100).toFixed(0)}pp`;
+    const isScored = i === TRANSFERS_PER_TIMELINE - 1 ? ' last' : '';
+    return `<div class="cell${isScored}" style="height:${height}px;background:${cellColor}" title="${tooltip}"></div>`;
+  }).join('');
+}
+
+
+/* ========================== 10. CHARTS ========================== */
+
+/** Draw the semicircular risk gauge (green → amber → red) with a needle. */
+function drawGauge(risk) {
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const gauge = byId('gauge');
+  gauge.innerHTML = '';
+  const centerX = 100, centerY = 104, radius = 78;
+
+  const drawArc = (startAngle, endAngle, color, width) => {
+    const x0 = centerX + radius * Math.cos(startAngle), y0 = centerY + radius * Math.sin(startAngle);
+    const x1 = centerX + radius * Math.cos(endAngle),   y1 = centerY + radius * Math.sin(endAngle);
+    const largeArc = (endAngle - startAngle) > Math.PI ? 1 : 0;
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', `M${x0} ${y0} A${radius} ${radius} 0 ${largeArc} 1 ${x1} ${y1}`);
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', width);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    gauge.appendChild(path);
+  };
+
+  // The 180° track, split into safe / watch / alert zones.
+  drawArc(Math.PI, Math.PI * 1.33, '#1f3a30', 12);
+  drawArc(Math.PI * 1.34, Math.PI * 1.66, '#3a3320', 12);
+  drawArc(Math.PI * 1.67, Math.PI * 2, '#3a2222', 12);
+
+  // The needle, pointing to `risk` along the 180° sweep.
+  const needleAngle = Math.PI + risk * Math.PI;
+  const needleX = centerX + (radius - 4) * Math.cos(needleAngle);
+  const needleY = centerY + (radius - 4) * Math.sin(needleAngle);
+  const needleColor = risk < 0.33 ? '#37C98A' : risk < 0.66 ? '#F0B43C' : '#FF5D5D';
+  const needle = document.createElementNS(SVG_NS, 'line');
+  needle.setAttribute('x1', centerX); needle.setAttribute('y1', centerY);
+  needle.setAttribute('x2', needleX); needle.setAttribute('y2', needleY);
+  needle.setAttribute('stroke', needleColor);
+  needle.setAttribute('stroke-width', '3.5');
+  needle.setAttribute('stroke-linecap', 'round');
+  gauge.appendChild(needle);
+
+  const hub = document.createElementNS(SVG_NS, 'circle');
+  hub.setAttribute('cx', centerX); hub.setAttribute('cy', centerY); hub.setAttribute('r', '5');
+  hub.setAttribute('fill', needleColor);
+  gauge.appendChild(hub);
+
+  const label = document.createElementNS(SVG_NS, 'text');
+  label.setAttribute('x', centerX); label.setAttribute('y', centerY - 22);
+  label.setAttribute('text-anchor', 'middle');
+  label.setAttribute('fill', needleColor);
+  label.setAttribute('font-family', 'JetBrains Mono, monospace');
+  label.setAttribute('font-size', '26'); label.setAttribute('font-weight', '600');
+  label.textContent = (risk * 100).toFixed(0) + '%';
+  gauge.appendChild(label);
+}
+
+/** Draw the training loss curve onto its canvas. */
+function drawLossCurve(lossHistory) {
+  const canvas = byId('loss');
+  const ctx = canvas.getContext('2d');
+  const { width, height } = canvas;
+  ctx.clearRect(0, 0, width, height);
+
+  // Baseline.
+  ctx.strokeStyle = '#27313D';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, height - 20);
+  ctx.lineTo(width, height - 20);
+  ctx.stroke();
+
+  if (lossHistory.length === 0) {
+    ctx.fillStyle = '#8593A2';
+    ctx.font = '13px JetBrains Mono';
+    ctx.fillText('loss curve appears here during training', 16, height / 2);
+    return;
+  }
+
+  const maxLoss = Math.max(...lossHistory);
+  const minLoss = Math.min(...lossHistory);
+  const padding = 24;
+  const toX = (i) => padding + (i / Math.max(lossHistory.length - 1, 1)) * (width - 2 * padding);
+  const toY = (loss) => padding + (1 - (loss - minLoss) / ((maxLoss - minLoss) || 1)) * (height - 2 * padding - 20);
+
+  ctx.strokeStyle = '#5AA2FF';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  lossHistory.forEach((loss, i) => {
+    const x = toX(i), y = toY(loss);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  ctx.fillStyle = '#8593A2';
+  ctx.font = '11px JetBrains Mono';
+  ctx.fillText('loss ' + maxLoss.toFixed(3), padding, 16);
+  ctx.fillText(minLoss.toFixed(3), padding, height - 26);
+}
+
+/**
+ * Project high-dimensional vectors down to 2D using PCA (top 2 principal
+ * components via power iteration). Returns an array of [x, y] points.
+ */
+function projectTo2D(vectors) {
+  const count = vectors.length;
+  const dims = vectors[0].length;
+
+  // Centre the data.
+  const mean = new Array(dims).fill(0);
+  for (const v of vectors) for (let j = 0; j < dims; j++) mean[j] += v[j] / count;
+  const centered = vectors.map((v) => v.map((value, j) => value - mean[j]));
+
+  // Covariance matrix.
+  const covariance = Array.from({ length: dims }, () => new Array(dims).fill(0));
+  for (const v of centered) for (let i = 0; i < dims; i++) for (let j = 0; j < dims; j++) covariance[i][j] += (v[i] * v[j]) / count;
+
+  const multiply = (matrix, vector) => matrix.map((row) => row.reduce((sum, x, k) => sum + x * vector[k], 0));
+  const normalise = (vector) => {
+    const length = Math.sqrt(vector.reduce((sum, x) => sum + x * x, 0)) || 1;
+    return vector.map((x) => x / length);
+  };
+  const topEigenvector = (matrix) => {
+    let v = normalise(Array.from({ length: dims }, () => Math.random() - 0.5));
+    for (let iter = 0; iter < 80; iter++) v = normalise(multiply(matrix, v));
+    return v;
+  };
+
+  const component1 = topEigenvector(covariance);
+  // Deflate the covariance matrix, then find the second component.
+  const eigenvalue1 = multiply(covariance, component1).reduce((sum, x, k) => sum + x * component1[k], 0);
+  const deflated = covariance.map((row, i) => row.map((x, j) => x - eigenvalue1 * component1[i] * component1[j]));
+  const component2 = topEigenvector(deflated);
+
+  return centered.map((v) => [
+    v.reduce((sum, x, k) => sum + x * component1[k], 0),
+    v.reduce((sum, x, k) => sum + x * component2[k], 0),
+  ]);
+}
+
+/** Run the held-out timelines through the model and plot their 2D embeddings. */
+function projectHeldOutEmbeddings() {
+  if (!isModelTrained || !heldOutTensors) return;
+  const result = forwardPass(heldOutTensors.x, { returnEmbedding: true });
+  const embeddings = result.embedding.arraySync();
+  const labels = heldOutTensors.y.arraySync();
+  result.scamProbability.dispose();
+  result.embedding.dispose();
+  drawEmbeddingScatter({ points: projectTo2D(embeddings), labels });
+}
+
+/** Draw the 2D embedding scatter (green = legit, red = scam). */
+function drawEmbeddingScatter(data) {
+  const canvas = byId('embed');
+  const ctx = canvas.getContext('2d');
+  const { width, height } = canvas;
+  ctx.clearRect(0, 0, width, height);
+
+  if (!data) {
+    ctx.fillStyle = '#8593A2';
+    ctx.font = '13px JetBrains Mono';
+    ctx.fillText('train, then project — scam timelines should pull into their own cluster', 16, height / 2);
+    return;
+  }
+
+  const xs = data.points.map((p) => p[0]);
+  const ys = data.points.map((p) => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const padding = 34;
+  const toX = (x) => padding + ((x - minX) / ((maxX - minX) || 1)) * (width - 2 * padding);
+  const toY = (y) => padding + (1 - (y - minY) / ((maxY - minY) || 1)) * (height - 2 * padding);
+
+  data.points.forEach((point, i) => {
+    ctx.beginPath();
+    ctx.arc(toX(point[0]), toY(point[1]), 3.4, 0, 7);
+    ctx.fillStyle = data.labels[i] ? 'rgba(255,93,93,.78)' : 'rgba(55,201,138,.7)';
+    ctx.fill();
+  });
+}
+
+
+/* ========================= 11. STARTUP ========================= */
+
+/** Generate a fresh corpus and reset the model/UI state. */
+function generateCorpus() {
+  if (isBusy) return;
+  corpus = [];
+  for (let i = 0; i < uiSettings.accountCount; i++) corpus.push(generateRandomTimeline());
+  byId('import-report').hidden = true;
+  showCorpus();
+}
+
+/** Show the current corpus in the table and reset anything that depended on the old one. */
+function showCorpus() {
+  byId('ctools').style.display = 'flex';
+  byId('tablebox').style.display = 'block';
+  renderCorpusTable();
+
+  isModelTrained = false;
+  byId('model-state').textContent = 'untrained';
+  byId('model-state').style.color = 'var(--muted)';
+  byId('train').disabled = false;
+  byId('score').disabled = true;
+  byId('project').disabled = true;
+  byId('result').classList.remove('show');
+  drawLossCurve([]);
+  drawEmbeddingScatter(null);
+}
+
+// Preset transfers for the score panel: each is the full set of form values.
+const SCORE_PRESETS = {
+  routine:  { amt: 250,   dir: '1', new: '0', age: 600, drain: 2,  hour: 14, fi1: 0, fi24: 1,  fi7: 3,  fo1: 0, fo: 0, pass: 5,  exit: 5,  struct: 5,  young: 5  },
+  invest:   { amt: 8000,  dir: '1', new: '1', age: 9,   drain: 35, hour: 21, fi1: 4, fi24: 9,  fi7: 18, fo1: 3, fo: 5, pass: 90, exit: 70, struct: 80, young: 75 },
+  macau:    { amt: 30000, dir: '1', new: '1', age: 5,   drain: 88, hour: 2,  fi1: 8, fi24: 16, fi7: 30, fo1: 5, fo: 9, pass: 96, exit: 85, struct: 90, young: 80 },
+  genuine:  { amt: 18000, dir: '1', new: '1', age: 420, drain: 60, hour: 11, fi1: 0, fi24: 2,  fi7: 6,  fo1: 0, fo: 1, pass: 12, exit: 10, struct: 5,  young: 10 },
+};
+
+/** Load a preset into the score form (and re-score if the model is ready). */
+function applyScorePreset(presetName) {
+  const preset = SCORE_PRESETS[presetName];
+  byId('f-amt').value = preset.amt;
+  byId('f-dir').value = preset.dir;
+  byId('f-new').value = preset.new;
+  byId('f-age').value = preset.age;
+  byId('f-drain').value = preset.drain; byId('lab-drain').textContent = preset.drain + '%';
+  byId('f-hour').value = preset.hour;
+  byId('f-fi1').value = preset.fi1;
+  byId('f-fi24').value = preset.fi24;
+  byId('f-fi7').value = preset.fi7;
+  byId('f-fo1').value = preset.fo1;
+  byId('f-fo').value = preset.fo;
+  byId('f-pass').value = preset.pass; byId('lab-pass').textContent = preset.pass + '%';
+  byId('f-exit').value = preset.exit; byId('lab-exit').textContent = preset.exit + '%';
+  byId('f-struct').value = preset.struct; byId('lab-struct').textContent = preset.struct + '%';
+  byId('f-young').value = preset.young; byId('lab-young').textContent = preset.young + '%';
+  if (isModelTrained) scoreTransfer();
+}
+
+/** Attach all event listeners and draw the initial empty charts. */
+function wireUpUI() {
+  // Corpus sliders.
+  byId('r-n').oninput = (e) => { uiSettings.accountCount = +e.target.value; byId('lab-n').textContent = uiSettings.accountCount; };
+  byId('r-f').oninput = (e) => { uiSettings.scamShare = +e.target.value / 100; byId('lab-f').textContent = e.target.value + '%'; };
+  byId('r-e').oninput = (e) => { uiSettings.trainingEpochs = +e.target.value; byId('lab-e').textContent = uiSettings.trainingEpochs; };
+
+  // Main action buttons.
+  byId('gen').onclick = generateCorpus;
+  byId('import').onclick = () => { if (!isBusy) byId('import-file').click(); };
+  byId('import-file').onchange = (e) => { const file = e.target.files[0]; if (file) importCorpusFile(file); e.target.value = ''; };
+  byId('export').onclick = exportCorpusJson;
+  byId('load').onclick = () => loadCorpusFromUrl(byId('load-path').value.trim());
+  byId('sig-reset').onclick = resetSignatureLibrary;
+  byId('load-path').onkeydown = (e) => { if (e.key === 'Enter') loadCorpusFromUrl(e.target.value.trim()); };
+  byId('train').onclick = trainModel;
+  byId('score').onclick = scoreTransfer;
+  byId('project').onclick = projectHeldOutEmbeddings;
+
+  // Add-example buttons.
+  byId('add-legit').onclick = () => {
+    const timeline = createAccountTimeline(Math.random() < 0.5 ? 'legitbig' : 'legit');
+    timeline.id = nextTimelineId++;
+    corpus.push(timeline);
+    renderCorpusTable();
+  };
+  byId('add-scam').onclick = () => {
+    const timeline = createAccountTimeline('scam');
+    timeline.id = nextTimelineId++;
+    corpus.push(timeline);
+    renderCorpusTable();
+  };
+
+  // Score-panel sliders + presets.
+  byId('f-drain').oninput = (e) => { byId('lab-drain').textContent = e.target.value + '%'; };
+  byId('f-pass').oninput = (e) => { byId('lab-pass').textContent = e.target.value + '%'; };
+  byId('f-exit').oninput = (e) => { byId('lab-exit').textContent = e.target.value + '%'; };
+  byId('f-struct').oninput = (e) => { byId('lab-struct').textContent = e.target.value + '%'; };
+  byId('f-young').oninput = (e) => { byId('lab-young').textContent = e.target.value + '%'; };
+  document.querySelectorAll('.preset').forEach((button) => {
+    button.onclick = () => applyScorePreset(button.dataset.preset);
+  });
+}
+
+// Boot: wait for TF.js, show the backend, wire up the UI, draw empty charts.
+(async () => {
+  await tf.ready();
+  byId('engine').textContent = tf.getBackend();
+  byId('d-engine').classList.add('on');
+  wireUpUI();
+  drawLossCurve([]);
+  drawEmbeddingScatter(null);
+  // Open as scam-sentinel.html?corpus=training-data/ibm-aml-corpus.json to auto-load a file.
+  const corpusParam = new URLSearchParams(location.search).get('corpus');
+  if (corpusParam) loadCorpusFromUrl(corpusParam);
+})();
+
+</script>
+</body>
+</html>

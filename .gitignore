@@ -1,0 +1,42 @@
+# Raw third-party datasets (IBM AML, ~450 MB; download separately)
+data/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+tmp/
+.cache/
+
+# Exported models / browser downloads
+*.weights.bin
+model.json
+
+# Editors and IDEs
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code local settings
+.claude/settings.local.json
